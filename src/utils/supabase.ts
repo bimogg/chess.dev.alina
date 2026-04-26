@@ -1,0 +1,173 @@
+/**
+ * Supabase client.
+ * Reads URL + anon key from Vite env vars (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).
+ * If env vars are missing, all functions return null/empty and app falls back
+ * to local-only mode (LocalStorage profile, no remote leaderboard).
+ */
+
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { UserProfile, LeaderboardEntry } from '../types'
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+
+let client: SupabaseClient | null = null
+
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  try {
+    client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true },
+    })
+  } catch (e) {
+    console.warn('[Supabase] Failed to init client', e)
+  }
+}
+
+export function isSupabaseEnabled(): boolean {
+  return !!client
+}
+
+export function getClient(): SupabaseClient | null {
+  return client
+}
+
+// ─── Auth ─────────────────────────────────────────────────────
+export async function signInWithEmail(email: string, password: string) {
+  if (!client) throw new Error('Supabase not configured')
+  return client.auth.signInWithPassword({ email, password })
+}
+
+export async function signUpWithEmail(email: string, password: string, username: string) {
+  if (!client) throw new Error('Supabase not configured')
+  return client.auth.signUp({
+    email,
+    password,
+    options: { data: { username } },
+  })
+}
+
+export async function signInAnon(username: string) {
+  if (!client) throw new Error('Supabase not configured')
+  return client.auth.signInAnonymously({ options: { data: { username } } })
+}
+
+export async function signOut() {
+  if (!client) return
+  await client.auth.signOut()
+}
+
+export async function getCurrentUser() {
+  if (!client) return null
+  const { data } = await client.auth.getUser()
+  return data.user
+}
+
+// ─── Profile ──────────────────────────────────────────────────
+export async function getProfile(userId: string): Promise<UserProfile | null> {
+  if (!client) return null
+  const { data, error } = await client
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle()
+  if (error || !data) return null
+  return mapDbProfile(data)
+}
+
+export async function upsertProfile(profile: Partial<UserProfile> & { id: string }) {
+  if (!client) return
+  const dbRow = {
+    id: profile.id,
+    username: profile.username,
+    city: profile.city,
+    elo: profile.elo,
+    games_played: profile.gamesPlayed,
+    wins: profile.wins,
+    losses: profile.losses,
+    draws: profile.draws,
+    is_pro: profile.isPro,
+  }
+  await client.from('profiles').upsert(dbRow)
+}
+
+export async function recordGameResult(
+  userId: string,
+  result: 'win' | 'loss' | 'draw',
+  opponentElo = 1200,
+) {
+  const profile = await getProfile(userId)
+  if (!profile) return
+  const k = 32
+  const expected = 1 / (1 + Math.pow(10, (opponentElo - profile.elo) / 400))
+  const score = result === 'win' ? 1 : result === 'draw' ? 0.5 : 0
+  const newElo = Math.round(profile.elo + k * (score - expected))
+  await upsertProfile({
+    id: userId,
+    elo: newElo,
+    gamesPlayed: profile.gamesPlayed + 1,
+    wins: profile.wins + (result === 'win' ? 1 : 0),
+    losses: profile.losses + (result === 'loss' ? 1 : 0),
+    draws: profile.draws + (result === 'draw' ? 1 : 0),
+  })
+}
+
+// ─── Leaderboard ──────────────────────────────────────────────
+export async function getGlobalLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
+  if (!client) return []
+  const { data, error } = await client
+    .from('profiles')
+    .select('username, city, elo, wins, is_pro')
+    .order('elo', { ascending: false })
+    .limit(limit)
+  if (error || !data) return []
+  return data.map(mapDbLeaderEntry)
+}
+
+export async function getCityLeaderboard(city: string, limit = 50): Promise<LeaderboardEntry[]> {
+  if (!client) return []
+  const { data, error } = await client
+    .from('profiles')
+    .select('username, city, elo, wins, is_pro')
+    .eq('city', city)
+    .order('elo', { ascending: false })
+    .limit(limit)
+  if (error || !data) return []
+  return data.map(mapDbLeaderEntry)
+}
+
+export async function getCities(): Promise<string[]> {
+  if (!client) return []
+  const { data, error } = await client
+    .from('profiles')
+    .select('city')
+    .not('city', 'is', null)
+  if (error || !data) return []
+  const set = new Set<string>()
+  data.forEach((r) => r.city && set.add(r.city))
+  return Array.from(set).sort()
+}
+
+// ─── Helpers ──────────────────────────────────────────────────
+function mapDbProfile(row: Record<string, unknown>): UserProfile {
+  return {
+    id: row.id as string,
+    username: (row.username as string) ?? 'Player',
+    city: (row.city as string) ?? '',
+    elo: (row.elo as number) ?? 1200,
+    gamesPlayed: (row.games_played as number) ?? 0,
+    wins: (row.wins as number) ?? 0,
+    losses: (row.losses as number) ?? 0,
+    draws: (row.draws as number) ?? 0,
+    isPro: (row.is_pro as boolean) ?? false,
+  }
+}
+
+function mapDbLeaderEntry(row: Record<string, unknown>): LeaderboardEntry {
+  return {
+    username: (row.username as string) ?? 'Player',
+    city: (row.city as string) ?? '',
+    elo: (row.elo as number) ?? 1200,
+    wins: (row.wins as number) ?? 0,
+    isPro: (row.is_pro as boolean) ?? false,
+  }
+}

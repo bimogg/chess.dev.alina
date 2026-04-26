@@ -1,0 +1,32 @@
+{
+  "name": "chessverse-3d",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "postinstall": "node scripts/copy-stockfish.js"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.88.0",
+    "@react-three/fiber": "^8.15.0",
+    "@supabase/supabase-js": "^2.104.1",
+    "chess.js": "^1.0.0",
+    "peerjs": "^1.5.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "stockfish": "^18.0.7",
+    "three": "^0.158.0",
+    "zustand": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/three": "^0.158.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "typescript": "^5.2.0",
+    "vite": "^5.0.0"
+  }
+}
