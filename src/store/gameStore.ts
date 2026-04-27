@@ -789,7 +789,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         unsubscribeRoom(roomChannel)
         const me = getMultiplayerIdentity(get())
         console.log('clientId', me)
-        const roomId = `room-${Math.random().toString(36).slice(2, 10)}`
+        const roomId = crypto.randomUUID()
         const chess = new Chess()
         const room = await createRoom({
           id: roomId,
