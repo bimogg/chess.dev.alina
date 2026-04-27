@@ -112,7 +112,7 @@ export function Sidebar() {
         <button className="sidebar-home-btn" onClick={() => { leaveMultiplayer(); goToLanding() }}>
           ← На главную
         </button>
-        <div className="sidebar-logo">♟ ChessVerse</div>
+        <div className="sidebar-logo">♟ Chess3D</div>
         <button className="sidebar-new-btn" onClick={goToSetup}>
           Новая
         </button>

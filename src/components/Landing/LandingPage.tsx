@@ -150,7 +150,7 @@ export function LandingPage() {
         <div className="lp-hero-left">
           <p className="lp-hero-label">NFACTORIAL &bull; 2 ТУР</p>
           <h1 className="lp-hero-title">
-            <span className="lp-hero-title-main">ChessVerse</span>
+            <span className="lp-hero-title-main">Chess3D</span>
             <span className="lp-hero-title-3d">3D</span>
           </h1>
           <p className="lp-hero-sub">
@@ -249,7 +249,7 @@ export function LandingPage() {
       <section className="lp-why">
         <div className="lp-container">
           <div className="lp-section-header">
-            <h2 className="lp-section-title">Почему ChessVerse 3D</h2>
+            <h2 className="lp-section-title">Почему Chess3D</h2>
           </div>
           <div className="lp-why-grid">
             {WHY_ITEMS.map(w => (
