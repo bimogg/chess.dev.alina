@@ -20,7 +20,7 @@ export function Sidebar() {
     isPro, openProUpgrade, openSkinsShop,
     profile, openAuthModal, goToProfile, goToLeaderboard,
     runCoachAnalysis, coachAnalyzing,
-    leaveMultiplayer, mpStatus,
+    leaveMultiplayer, mpStatus, mpRole,
   } = useGameStore()
 
   const turn = chess.turn()
@@ -89,7 +89,13 @@ export function Sidebar() {
         {gameMode === 'multiplayer' && (
           <div className="mode-tag">
             <span>Online P2P</span>
-            <span className="mode-tag-color">{playerColor === 'w' ? 'You: White' : 'You: Black'}</span>
+            <span className="mode-tag-color">
+              {mpRole === 'white'
+                ? 'Вы: белые'
+                : mpRole === 'black'
+                  ? 'Вы: чёрные'
+                  : 'Вы: наблюдатель'}
+            </span>
           </div>
         )}
       </div>

@@ -62,6 +62,7 @@ interface GameStore {
   // Multiplayer
   mpRoomId: string | null
   mpRoomLink: string | null
+  mpRole: 'white' | 'black' | 'spectator' | null
   mpReadOnly: boolean
   mpStatus: 'idle' | 'hosting' | 'joining' | 'connected' | 'error'
   mpError: string | null
@@ -320,6 +321,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     mpRoomId: null,
     mpRoomLink: null,
+    mpRole: null,
     mpReadOnly: false,
     mpStatus: 'idle',
     mpError: null,
@@ -762,6 +764,7 @@ export const useGameStore = create<GameStore>((set, get) => {
                 chess,
                 gameMode: 'multiplayer',
                 playerColor: 'w',
+                mpRole: 'white',
                 selectedSquare: null,
                 legalMoveSquares: [],
                 capturedPieces: { w: [], b: [] },
@@ -803,6 +806,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           screen: 'game',
           gameMode: 'multiplayer',
           playerColor: 'w',
+          mpRole: 'white',
           mpReadOnly: false,
           mpRoomId: roomId,
           mpRoomLink: getRoomLink(roomId),
@@ -832,6 +836,7 @@ export const useGameStore = create<GameStore>((set, get) => {
                 chess,
                 gameMode: 'multiplayer',
                 playerColor: 'b',
+                mpRole: 'black',
                 selectedSquare: null,
                 legalMoveSquares: [],
                 capturedPieces: { w: [], b: [] },
@@ -855,16 +860,23 @@ export const useGameStore = create<GameStore>((set, get) => {
         let room = await getRoom(roomId)
         if (!room) throw new Error('Room not found')
 
-        if (!room.black_player && room.white_player !== me) {
+        const whitePlayerId = room.white_player ? String(room.white_player) : null
+        const blackPlayerId = room.black_player ? String(room.black_player) : null
+        const meId = String(me)
+
+        if (!blackPlayerId && whitePlayerId !== meId) {
           await claimBlackSeat(roomId, me)
           room = await getRoom(roomId)
           if (!room) throw new Error('Room not found')
         }
 
-        const isWhite = room.white_player === me
-        const isBlack = room.black_player === me
+        const whiteNow = room.white_player ? String(room.white_player) : null
+        const blackNow = room.black_player ? String(room.black_player) : null
+        const isWhite = whiteNow === meId
+        const isBlack = blackNow === meId
         const readOnly = !isWhite && !isBlack
         const playerColor: 'w' | 'b' = isBlack ? 'b' : 'w'
+        const mpRole: 'white' | 'black' | 'spectator' = isWhite ? 'white' : isBlack ? 'black' : 'spectator'
 
         applyRoomSnapshot(set, room)
         roomChannel = subscribeRoomUpdates(roomId, (nextRoom) => {
@@ -876,6 +888,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           screen: 'game',
           gameMode: 'multiplayer',
           playerColor,
+          mpRole,
           mpReadOnly: readOnly,
           mpRoomId: roomId,
           mpRoomLink: getRoomLink(roomId),
@@ -889,7 +902,14 @@ export const useGameStore = create<GameStore>((set, get) => {
       mpCleanup()
       unsubscribeRoom(roomChannel)
       roomChannel = null
-      set({ mpStatus: 'idle', mpRoomId: null, mpRoomLink: null, mpReadOnly: false, mpError: null })
+      set({
+        mpStatus: 'idle',
+        mpRoomId: null,
+        mpRoomLink: null,
+        mpRole: null,
+        mpReadOnly: false,
+        mpError: null,
+      })
     },
 
     // ─── AI Coach ─────────────────────────────────────
