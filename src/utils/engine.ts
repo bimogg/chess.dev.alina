@@ -257,7 +257,4 @@ async function heuristicMove(
   }
 }
 
-// Keep init eager so first move is fast
-if (typeof window !== 'undefined') {
-  setTimeout(() => initEngine(), 100)
-}
+// Engine initializes lazily when AI/analysis is used.

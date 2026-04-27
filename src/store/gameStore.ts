@@ -234,9 +234,6 @@ export const useGameStore = create<GameStore>((set, get) => {
   const initialTheme = getAppTheme()
   applyAppTheme(initialTheme)
 
-  // Eagerly init engine
-  void initEngine()
-
   // Initial profile (local fallback; remote check happens via loadProfile())
   const initialProfile = localGetProfile()
 
@@ -298,6 +295,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       const chess = new Chess()
       saveCurrentFen('')
       savePieceSkin(config.pieceSkin)
+      // Lazy-init engine only when AI mode is selected.
+      if (config.mode === 'vs-ai') void initEngine()
       set({
         screen: 'game',
         chess,
