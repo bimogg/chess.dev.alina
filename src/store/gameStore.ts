@@ -670,16 +670,24 @@ export const useGameStore = create<GameStore>((set, get) => {
             set({ mpStatus: 'error', mpError: `Supabase update failed: ${e.message}` })
           })
       } else if (gameMode === 'multiplayer') {
-        chess.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
+        const promotionMove = chess.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
+        if (!promotionMove) {
+          set({ mpError: 'illegal move', promotionPending: null, selectedSquare: null, legalMoveSquares: [] })
+          console.log('move blocked', 'illegal move')
+          return
+        }
         const newStatus = computeGameStatus(chess)
         const captured = computeCapturedPieces(chess)
         saveCurrentFen(chess.pgn())
 
         set({
           promotionPending: null,
+          selectedSquare: null,
+          legalMoveSquares: [],
           capturedPieces: captured,
           gameStatus: newStatus,
           lastMove: { from: promotionPending.from, to: promotionPending.to },
+          mpError: null,
         })
         mpSend({
           type: 'move',
@@ -690,13 +698,19 @@ export const useGameStore = create<GameStore>((set, get) => {
           fen: chess.fen(),
         })
       } else {
-        chess.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
+        const promotionMove = chess.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
+        if (!promotionMove) {
+          set({ promotionPending: null, selectedSquare: null, legalMoveSquares: [] })
+          return
+        }
         const newStatus = computeGameStatus(chess)
         const captured = computeCapturedPieces(chess)
         saveCurrentFen(chess.pgn())
 
         set({
           promotionPending: null,
+          selectedSquare: null,
+          legalMoveSquares: [],
           capturedPieces: captured,
           gameStatus: newStatus,
           lastMove: { from: promotionPending.from, to: promotionPending.to },
