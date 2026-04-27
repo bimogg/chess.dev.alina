@@ -10,14 +10,18 @@ import { UserProfile, LeaderboardEntry } from '../types'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined
-const SUPABASE_KEY = SUPABASE_ANON_KEY || SUPABASE_PUBLISHABLE_KEY
+
+console.log(
+  'Supabase env exists:',
+  Boolean(import.meta.env.VITE_SUPABASE_URL),
+  Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY)
+)
 
 let client: SupabaseClient | null = null
 
-if (SUPABASE_URL && SUPABASE_KEY) {
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
   try {
-    client = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: true, autoRefreshToken: true },
     })
   } catch (e) {
