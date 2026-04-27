@@ -1,4 +1,4 @@
--- ChessVerse 3D — Supabase schema
+-- ChessFlow — Supabase schema
 -- Run this in Supabase SQL Editor once after creating the project.
 
 create extension if not exists "uuid-ossp";

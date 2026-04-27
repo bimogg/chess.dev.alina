@@ -70,7 +70,7 @@ export function LeaderboardScreen() {
         <div className="screen-page-title">Leaderboard</div>
         <div className="screen-page-sub">
           {supabaseAvailable
-            ? 'Top players across the ChessVerse — ranked by ELO.'
+            ? 'Top players across the ChessFlow — ranked by ELO.'
             : 'Demo data — connect Supabase to see real players.'}
         </div>
 

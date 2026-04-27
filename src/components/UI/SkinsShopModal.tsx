@@ -34,7 +34,7 @@ export function SkinsShopModal() {
         <div className="modal-subtitle">
           {isPro
             ? 'You own all skins. Tap to switch.'
-            : 'Premium skins are part of ChessVerse Pro.'}
+            : 'Premium skins are part of ChessFlow Pro.'}
         </div>
 
         <div className="skins-grid">

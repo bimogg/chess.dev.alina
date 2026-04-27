@@ -10,7 +10,7 @@ export function ProUpgradeModal() {
       <div className="modal-card pro-modal" onClick={e => e.stopPropagation()}>
         <div className="pro-modal-hero">
           <div className="pro-modal-crown">♛</div>
-          <div className="pro-modal-title">ChessVerse Pro</div>
+          <div className="pro-modal-title">ChessFlow Pro</div>
           <div className="pro-modal-tag">Unlock the full immersive experience</div>
         </div>
 
