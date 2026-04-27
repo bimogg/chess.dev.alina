@@ -158,25 +158,17 @@ export async function getCities(): Promise<string[]> {
   return Array.from(set).sort()
 }
 
-// ─── Rooms / Realtime multiplayer ───────────────────────────────
+// ─── Realtime Rooms ───────────────────────────────────────────
 export async function createRoom(row: RoomRow): Promise<RoomRow> {
   if (!client) throw new Error('Supabase not configured')
-  const { data, error } = await client
-    .from('rooms')
-    .insert(row)
-    .select('*')
-    .single()
+  const { data, error } = await client.from('rooms').insert(row).select('*').single()
   if (error || !data) throw new Error(error?.message || 'Failed to create room')
   return data as RoomRow
 }
 
 export async function getRoom(roomId: string): Promise<RoomRow | null> {
   if (!client) throw new Error('Supabase not configured')
-  const { data, error } = await client
-    .from('rooms')
-    .select('*')
-    .eq('id', roomId)
-    .maybeSingle()
+  const { data, error } = await client.from('rooms').select('*').eq('id', roomId).maybeSingle()
   if (error) throw new Error(error.message)
   return (data as RoomRow | null) ?? null
 }
@@ -195,38 +187,32 @@ export async function claimBlackSeat(roomId: string, playerId: string): Promise<
 
 export async function updateRoomState(
   roomId: string,
-  payload: Pick<RoomRow, 'fen' | 'pgn' | 'turn'>
+  patch: Pick<RoomRow, 'fen' | 'pgn' | 'turn'>
 ): Promise<RoomRow> {
   if (!client) throw new Error('Supabase not configured')
   const { data, error } = await client
     .from('rooms')
-    .update(payload)
+    .update(patch)
     .eq('id', roomId)
     .select('*')
     .single()
-  if (error || !data) throw new Error(error?.message || 'Failed to update room')
+  if (error || !data) throw new Error(error?.message || 'Failed to update room state')
   return data as RoomRow
 }
 
 export function subscribeRoomUpdates(
   roomId: string,
-  onRoomUpdate: (room: RoomRow) => void,
-  onStatus?: (status: 'connected' | 'syncing' | 'error') => void
+  onUpdate: (room: RoomRow) => void,
 ): RealtimeChannel {
   if (!client) throw new Error('Supabase not configured')
-  const channel = client
+  return client
     .channel(`room:${roomId}`)
     .on(
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
-      (payload) => onRoomUpdate(payload.new as RoomRow)
+      (payload) => onUpdate(payload.new as RoomRow)
     )
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') onStatus?.('connected')
-      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') onStatus?.('error')
-      else onStatus?.('syncing')
-    })
-  return channel
+    .subscribe()
 }
 
 export function unsubscribeRoom(channel: RealtimeChannel | null | undefined) {

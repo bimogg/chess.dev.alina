@@ -35,12 +35,11 @@ export function MultiplayerLobby() {
   const handleJoin = () => {
     const cleaned = roomInput.trim()
     if (!cleaned) return
-    // Accept bare room id, /room/:id URL, or legacy ?room= links
+    // Accept both bare room id and full URL
     let room = cleaned
     try {
       const url = new URL(cleaned)
-      const pathMatch = url.pathname.match(/^\/room\/([^/]+)$/)
-      room = pathMatch?.[1] ?? url.searchParams.get('room') ?? cleaned
+      room = url.searchParams.get('room') ?? cleaned
     } catch { /* not a URL, use as-is */ }
     joinMultiplayer(room)
   }
@@ -52,7 +51,7 @@ export function MultiplayerLobby() {
 
         <div className="setup-header">
           <h2 className="setup-title">Online Match</h2>
-          <p className="setup-subtitle">Supabase Realtime sync — shared room state by FEN</p>
+          <p className="setup-subtitle">Direct P2P connection — no server, no signup</p>
         </div>
 
         <div className="mp-tabs">
@@ -63,7 +62,7 @@ export function MultiplayerLobby() {
         {tab === 'host' && (
           <div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18, lineHeight: 1.6 }}>
-              Create a room and share the link. Your friend opens it and joins instantly.
+              Create a room and share the link. Your friend opens it and you start playing instantly.
               You'll play <strong>White</strong>.
             </p>
             <button
@@ -105,7 +104,7 @@ export function MultiplayerLobby() {
                 className="mp-input"
                 value={roomInput}
                 onChange={(e) => setRoomInput(e.target.value)}
-                placeholder="room-xxxxxxx or full /room/:id URL"
+                placeholder="cv-xxxxxxxx or full URL"
                 autoFocus
               />
             </div>
@@ -122,7 +121,7 @@ export function MultiplayerLobby() {
         {mpError && <div className="mp-error">{mpError}</div>}
 
         <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', marginTop: 22, lineHeight: 1.6 }}>
-          Powered by Supabase Realtime · rooms table · synced by FEN source of truth
+          Powered by PeerJS · WebRTC peer-to-peer · Your moves never touch our servers
         </div>
       </div>
     </div>

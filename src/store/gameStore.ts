@@ -60,8 +60,8 @@ interface GameStore {
   // Multiplayer
   mpRoomId: string | null
   mpRoomLink: string | null
-  mpRole: 'white' | 'black' | 'spectator' | null
-  mpStatus: 'idle' | 'hosting' | 'joining' | 'connected' | 'syncing' | 'error'
+  mpReadOnly: boolean
+  mpStatus: 'idle' | 'hosting' | 'joining' | 'connected' | 'error'
   mpError: string | null
 
   // AI Coach
@@ -144,17 +144,16 @@ let roomChannel: RealtimeChannel | null = null
 
 function getMultiplayerIdentity(state: GameStore): string {
   if (state.profile?.id) return state.profile.id
-  const k = 'cv_mp_guest_id'
-  const existing = typeof window !== 'undefined' ? window.localStorage.getItem(k) : null
+  const key = 'cv_mp_guest_id'
+  const existing = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null
   if (existing) return existing
   const generated = `guest-${Math.random().toString(36).slice(2, 10)}`
-  if (typeof window !== 'undefined') window.localStorage.setItem(k, generated)
+  if (typeof window !== 'undefined') window.localStorage.setItem(key, generated)
   return generated
 }
 
 function applyRoomSnapshot(set: (partial: Partial<GameStore>) => void, room: RoomRow) {
-  const chess = new Chess()
-  chess.load(room.fen)
+  const chess = new Chess(room.fen)
   set({
     chess,
     selectedSquare: null,
@@ -274,7 +273,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     mpRoomId: null,
     mpRoomLink: null,
-    mpRole: null,
+    mpReadOnly: false,
     mpStatus: 'idle',
     mpError: null,
 
@@ -326,13 +325,15 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     // ─── Game actions ──────────────────────────────────
     selectSquare(square: string) {
-      const { chess, selectedSquare, gameMode, playerColor, gameStatus, difficulty, mpStatus, mpRoomId, mpRole } = get()
+      const {
+        chess, selectedSquare, gameMode, playerColor, gameStatus, difficulty,
+        mpStatus, mpRoomId, mpReadOnly,
+      } = get()
       if (gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw') return
 
       const turn = chess.turn()
       if (gameMode === 'vs-ai' && turn !== playerColor) return
-      if (gameMode === 'multiplayer' && (mpRole === 'spectator' || turn !== playerColor)) return
-      // Don't allow moves if realtime connection dropped.
+      if (gameMode === 'multiplayer' && (mpReadOnly || turn !== playerColor)) return
       if (gameMode === 'multiplayer' && mpStatus !== 'connected') return
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -354,23 +355,19 @@ export const useGameStore = create<GameStore>((set, get) => {
             return
           }
 
-          const next = new Chess(chess.fen())
-          next.move({ from: selectedSquare, to: square })
-          const newStatus = computeGameStatus(next)
-
           if (gameMode === 'multiplayer' && mpRoomId) {
-            set({ mpStatus: 'syncing' })
+            const next = new Chess(chess.fen())
+            next.move({ from: selectedSquare, to: square })
+            set({ mpStatus: 'hosting' })
             updateRoomState(mpRoomId, { fen: next.fen(), pgn: next.pgn(), turn: next.turn() })
               .then((room) => {
                 applyRoomSnapshot(set, room)
-                set({
-                  mpStatus: 'connected',
-                  lastMove: { from: selectedSquare, to: square },
-                })
+                set({ mpStatus: 'connected', lastMove: { from: selectedSquare, to: square } })
               })
               .catch((e: Error) => set({ mpStatus: 'error', mpError: e.message }))
           } else {
             chess.move({ from: selectedSquare, to: square })
+            const newStatus = computeGameStatus(chess)
             const captured = computeCapturedPieces(chess)
             saveCurrentFen(chess.pgn())
 
@@ -384,12 +381,11 @@ export const useGameStore = create<GameStore>((set, get) => {
               hintToSquare: null,
             })
           }
-
           if (gameMode === 'vs-ai' && !chess.isGameOver()) {
             setTimeout(() => runStockfishMove(chess, difficulty, set, get), 80)
           }
           if (chess.isGameOver()) {
-            void maybeRecordResult(get(), newStatus)
+            void maybeRecordResult(get(), computeGameStatus(chess))
           }
           return
         }
@@ -419,14 +415,11 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (gameMode === 'multiplayer' && mpRoomId) {
         const next = new Chess(chess.fen())
         next.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
-        set({ mpStatus: 'syncing', promotionPending: null })
+        set({ mpStatus: 'hosting', promotionPending: null })
         updateRoomState(mpRoomId, { fen: next.fen(), pgn: next.pgn(), turn: next.turn() })
           .then((room) => {
             applyRoomSnapshot(set, room)
-            set({
-              mpStatus: 'connected',
-              lastMove: { from: promotionPending.from, to: promotionPending.to },
-            })
+            set({ mpStatus: 'connected', lastMove: { from: promotionPending.from, to: promotionPending.to } })
           })
           .catch((e: Error) => set({ mpStatus: 'error', mpError: e.message }))
       } else {
@@ -657,7 +650,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     // ─── Multiplayer ──────────────────────────────────
     async hostMultiplayer() {
       if (!isSupabaseEnabled()) {
-        set({ mpStatus: 'error', mpError: 'Supabase is not configured' })
+        set({ mpStatus: 'error', mpError: 'Supabase not configured' })
         return
       }
       set({ mpStatus: 'hosting', mpError: null })
@@ -675,26 +668,23 @@ export const useGameStore = create<GameStore>((set, get) => {
           black_player: null,
         })
         applyRoomSnapshot(set, room)
-        roomChannel = subscribeRoomUpdates(
-          roomId,
-          (nextRoom) => {
-            applyRoomSnapshot(set, nextRoom)
-            set({ mpStatus: 'connected' })
-          },
-          (status) => set({ mpStatus: status })
-        )
-        if (typeof window !== 'undefined') {
-          window.history.replaceState({}, '', `/room/${roomId}`)
-        }
+        roomChannel = subscribeRoomUpdates(roomId, (nextRoom) => {
+          applyRoomSnapshot(set, nextRoom)
+          set({ mpStatus: 'connected' })
+        })
         set({
+          mpStatus: 'connected',
           screen: 'game',
           gameMode: 'multiplayer',
           playerColor: 'w',
-          mpRole: 'white',
+          mpReadOnly: false,
           mpRoomId: roomId,
           mpRoomLink: getRoomLink(roomId),
-          mpStatus: 'connected',
-          mpError: null,
+          selectedSquare: null,
+          legalMoveSquares: [],
+          capturedPieces: computeCapturedPieces(chess),
+          gameStatus: 'playing',
+          lastMove: null,
         })
       } catch (e) {
         set({ mpStatus: 'error', mpError: (e as Error).message })
@@ -703,7 +693,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     async joinMultiplayer(roomId: string) {
       if (!isSupabaseEnabled()) {
-        set({ mpStatus: 'error', mpError: 'Supabase is not configured' })
+        set({ mpStatus: 'error', mpError: 'Supabase not configured' })
         return
       }
       set({ mpStatus: 'joining', mpError: null })
@@ -716,35 +706,27 @@ export const useGameStore = create<GameStore>((set, get) => {
         if (!room.black_player && room.white_player !== me) {
           await claimBlackSeat(roomId, me)
           room = await getRoom(roomId)
-          if (!room) throw new Error('Room not found after join')
+          if (!room) throw new Error('Room not found')
         }
 
-        const role: 'white' | 'black' | 'spectator' =
-          room.white_player === me ? 'white'
-            : room.black_player === me ? 'black'
-              : 'spectator'
+        const isWhite = room.white_player === me
+        const isBlack = room.black_player === me
+        const readOnly = !isWhite && !isBlack
+        const playerColor: 'w' | 'b' = isBlack ? 'b' : 'w'
 
         applyRoomSnapshot(set, room)
-        roomChannel = subscribeRoomUpdates(
-          roomId,
-          (nextRoom) => {
-            applyRoomSnapshot(set, nextRoom)
-            set({ mpStatus: 'connected' })
-          },
-          (status) => set({ mpStatus: status })
-        )
-        if (typeof window !== 'undefined') {
-          window.history.replaceState({}, '', `/room/${roomId}`)
-        }
+        roomChannel = subscribeRoomUpdates(roomId, (nextRoom) => {
+          applyRoomSnapshot(set, nextRoom)
+          set({ mpStatus: 'connected' })
+        })
         set({
+          mpStatus: 'connected',
           screen: 'game',
           gameMode: 'multiplayer',
-          playerColor: role === 'black' ? 'b' : 'w',
-          mpRole: role,
+          playerColor,
+          mpReadOnly: readOnly,
           mpRoomId: roomId,
           mpRoomLink: getRoomLink(roomId),
-          mpStatus: 'connected',
-          mpError: null,
         })
       } catch (e) {
         set({ mpStatus: 'error', mpError: (e as Error).message })
@@ -754,16 +736,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     leaveMultiplayer() {
       unsubscribeRoom(roomChannel)
       roomChannel = null
-      if (typeof window !== 'undefined' && /^\/room\//.test(window.location.pathname)) {
-        window.history.replaceState({}, '', '/')
-      }
-      set({
-        mpStatus: 'idle',
-        mpRole: null,
-        mpRoomId: null,
-        mpRoomLink: null,
-        mpError: null,
-      })
+      set({ mpStatus: 'idle', mpRoomId: null, mpRoomLink: null, mpReadOnly: false, mpError: null })
     },
 
     // ─── AI Coach ─────────────────────────────────────

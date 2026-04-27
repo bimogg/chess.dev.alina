@@ -20,7 +20,7 @@ export function Sidebar() {
     isPro, openProUpgrade, openSkinsShop,
     profile, openAuthModal, goToProfile, goToLeaderboard,
     runCoachAnalysis, coachAnalyzing,
-    leaveMultiplayer, mpStatus, mpRole, mpRoomId, mpRoomLink,
+    leaveMultiplayer, mpStatus,
   } = useGameStore()
 
   const turn = chess.turn()
@@ -88,32 +88,9 @@ export function Sidebar() {
         )}
         {gameMode === 'multiplayer' && (
           <div className="mode-tag">
-            <span>Online Supabase Realtime</span>
-            <span className="mode-tag-color">
-              {mpRole === 'black'
-                ? 'Вы играете за чёрных'
-                : mpRole === 'white'
-                  ? 'Вы играете за белых'
-                  : 'Режим наблюдателя'}
-            </span>
+            <span>Online P2P</span>
+            <span className="mode-tag-color">{playerColor === 'w' ? 'You: White' : 'You: Black'}</span>
           </div>
-        )}
-        {gameMode === 'multiplayer' && (
-          <div className="mode-tag" style={{ marginTop: 6 }}>
-            <span>Room: {mpRoomId ?? '—'}</span>
-            <span className="mode-tag-color">
-              {mpStatus === 'connected' ? 'connected' : mpStatus === 'syncing' ? 'syncing' : mpStatus}
-            </span>
-          </div>
-        )}
-        {gameMode === 'multiplayer' && mpRoomLink && (
-          <button
-            className="btn btn-secondary btn-sm btn-full"
-            style={{ marginTop: 8 }}
-            onClick={() => navigator.clipboard?.writeText(mpRoomLink)}
-          >
-            Copy room link
-          </button>
         )}
       </div>
 

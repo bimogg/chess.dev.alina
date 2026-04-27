@@ -74,8 +74,6 @@ function Lights() {
 
 export function ChessScene() {
   const controlsRef = useRef<OrbitControlsImpl>(null)
-  const { gameMode, playerColor } = useGameStore()
-  const boardRotationY = gameMode === 'multiplayer' && playerColor === 'b' ? Math.PI : 0
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -96,20 +94,18 @@ export function ChessScene() {
         <Lights />
 
         <Suspense fallback={null}>
-          <group rotation={[0, boardRotationY, 0]}>
-            <ChessBoard />
-            <Pieces />
-            {/* ContactShadows must be BELOW the board geometry.
-                Board border bottom ≈ Y = -0.065 - 0.065 = -0.13.
-                Placing shadows at Y=-0.2 keeps them clear of all geometry. */}
-            <ContactShadows
-              position={[0, -0.2, 0]}
-              opacity={0.45}
-              scale={12}
-              blur={2.2}
-              far={0.15}
-            />
-          </group>
+          <ChessBoard />
+          <Pieces />
+          {/* ContactShadows must be BELOW the board geometry.
+              Board border bottom ≈ Y = -0.065 - 0.065 = -0.13.
+              Placing shadows at Y=-0.2 keeps them clear of all geometry. */}
+          <ContactShadows
+            position={[0, -0.2, 0]}
+            opacity={0.45}
+            scale={12}
+            blur={2.2}
+            far={0.15}
+          />
         </Suspense>
 
         <OrbitControls
