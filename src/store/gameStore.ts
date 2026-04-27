@@ -335,7 +335,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           })
 
           if (gameMode === 'multiplayer') {
-            mpSend({ type: 'move', from: selectedSquare, to: square, pgn: chess.pgn() })
+            mpSend({ type: 'move', from: selectedSquare, to: square, pgn: chess.pgn(), fen: chess.fen() })
           }
           if (gameMode === 'vs-ai' && !chess.isGameOver()) {
             setTimeout(() => runStockfishMove(chess, difficulty, set, get), 80)
@@ -381,7 +381,14 @@ export const useGameStore = create<GameStore>((set, get) => {
       })
 
       if (gameMode === 'multiplayer') {
-        mpSend({ type: 'move', from: promotionPending.from, to: promotionPending.to, promotion: piece, pgn: chess.pgn() })
+        mpSend({
+          type: 'move',
+          from: promotionPending.from,
+          to: promotionPending.to,
+          promotion: piece,
+          pgn: chess.pgn(),
+          fen: chess.fen(),
+        })
       }
       if (gameMode === 'vs-ai' && !chess.isGameOver()) {
         setTimeout(() => runStockfishMove(chess, difficulty, set, get), 80)
@@ -686,8 +693,29 @@ function handleMpMessage(
   get: () => GameStore,
 ) {
   if (msg.type === 'move') {
-    // Use sender PGN as the source of truth to avoid desync.
-    // Incremental move-apply can fail silently if peers diverge by one ply.
+    // Use sender board state as source of truth to avoid Safari/mobile desyncs.
+    // FEN is deterministic and lighter to parse than full PGN.
+    const fromFen = new Chess()
+    try {
+      fromFen.load(msg.fen)
+      set({
+        chess: fromFen,
+        selectedSquare: null,
+        legalMoveSquares: [],
+        promotionPending: null,
+        capturedPieces: computeCapturedPieces(fromFen),
+        gameStatus: computeGameStatus(fromFen),
+        lastMove: { from: msg.from, to: msg.to },
+        hintSquare: null,
+        hintToSquare: null,
+      })
+      saveCurrentFen(fromFen.pgn())
+      return
+    } catch {
+      // Fallback below for backward compatibility with older payloads.
+    }
+
+    // Fallback: sender PGN as source of truth.
     const next = new Chess()
     try {
       next.loadPgn(msg.pgn)

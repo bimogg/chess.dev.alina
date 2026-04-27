@@ -8,7 +8,7 @@ import Peer, { DataConnection } from 'peerjs'
 
 export type MpMessage =
   | { type: 'hello'; username: string; color: 'w' | 'b' }
-  | { type: 'move'; from: string; to: string; promotion?: string; pgn: string }
+  | { type: 'move'; from: string; to: string; promotion?: string; pgn: string; fen: string }
   | { type: 'resign'; color: 'w' | 'b' }
   | { type: 'rematch-request' }
   | { type: 'rematch-accept' }
