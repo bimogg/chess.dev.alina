@@ -189,7 +189,7 @@ export async function claimBlackSeat(roomId: string, playerId: string): Promise<
 
 export async function updateRoomState(
   roomId: string,
-  patch: Pick<RoomRow, 'fen' | 'pgn' | 'turn'>
+  patch: Pick<RoomRow, 'fen' | 'pgn' | 'turn'> & { updated_at?: string }
 ): Promise<RoomRow> {
   if (!client) throw new Error('Supabase not configured')
   const { data, error } = await client

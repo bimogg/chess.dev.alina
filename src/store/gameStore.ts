@@ -176,6 +176,12 @@ function canCurrentPlayerMove(playerColor: 'w' | 'b', turn: 'w' | 'b'): boolean 
   )
 }
 
+function roleFromColor(color: 'w' | 'b' | null | undefined): 'white' | 'black' | 'spectator' {
+  if (color === 'w') return 'white'
+  if (color === 'b') return 'black'
+  return 'spectator'
+}
+
 function applyPeerMoveMessage(
   msg: MpMessage,
   set: (partial: Partial<GameStore>) => void,
@@ -385,11 +391,11 @@ export const useGameStore = create<GameStore>((set, get) => {
       const turn = chess.turn()
       if (gameMode === 'multiplayer') {
         console.log('TURN:', chess.turn())
-        console.log('PLAYER:', playerColor)
+        console.log('PLAYER:', roleFromColor(playerColor))
       }
       if (gameMode === 'vs-ai' && turn !== playerColor) return
       if (gameMode === 'multiplayer' && mpReadOnly) return
-      if (gameMode === 'multiplayer' && (mpStatus === 'joining' || mpStatus === 'error')) return
+      if (gameMode === 'multiplayer' && (mpStatus === 'joining' || mpStatus === 'error' || mpStatus === 'idle')) return
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const piece = chess.get(square as any)
@@ -402,6 +408,10 @@ export const useGameStore = create<GameStore>((set, get) => {
 
         if (selectedSquare !== square) {
           if (needsPromotion(chess, selectedSquare, square)) {
+            if (gameMode === 'multiplayer' && !canCurrentPlayerMove(playerColor, chess.turn())) {
+              set({ mpError: 'Not your turn' })
+              return
+            }
             set({ promotionPending: { from: selectedSquare, to: square }, selectedSquare: null, legalMoveSquares: [] })
             return
           }
@@ -422,7 +432,13 @@ export const useGameStore = create<GameStore>((set, get) => {
           if (gameMode === 'multiplayer' && mpRoomId) {
             const next = validated
             set({ mpStatus: 'hosting' })
-            updateRoomState(mpRoomId, { fen: next.fen(), pgn: next.pgn(), turn: next.turn() })
+            console.log('updating supabase after move')
+            updateRoomState(mpRoomId, {
+              fen: next.fen(),
+              pgn: next.pgn(),
+              turn: next.turn(),
+              updated_at: new Date().toISOString(),
+            })
               .then((room) => {
                 applyRoomSnapshot(set, room)
                 set({ mpStatus: 'connected', lastMove: { from: selectedSquare, to: square }, mpError: null })
@@ -483,6 +499,10 @@ export const useGameStore = create<GameStore>((set, get) => {
       }
 
       if (piece && piece.color === turn) {
+        if (gameMode === 'multiplayer' && piece.color !== playerColor) {
+          set({ mpError: 'You can move only your color' })
+          return
+        }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const moves = chess.moves({ square: square as any, verbose: true })
         set({ selectedSquare: square, legalMoveSquares: moves.map(m => m.to) })
@@ -490,14 +510,24 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     completePromotion(piece: string) {
-      const { chess, promotionPending, gameMode, difficulty, mpRoomId } = get()
+      const { chess, promotionPending, gameMode, difficulty, mpRoomId, playerColor } = get()
       if (!promotionPending) return
 
       if (gameMode === 'multiplayer' && mpRoomId) {
+        if (!canCurrentPlayerMove(playerColor, chess.turn())) {
+          set({ mpError: 'Not your turn', promotionPending: null })
+          return
+        }
         const next = new Chess(chess.fen())
         next.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
         set({ mpStatus: 'hosting', promotionPending: null })
-        updateRoomState(mpRoomId, { fen: next.fen(), pgn: next.pgn(), turn: next.turn() })
+        console.log('updating supabase after move')
+        updateRoomState(mpRoomId, {
+          fen: next.fen(),
+          pgn: next.pgn(),
+          turn: next.turn(),
+          updated_at: new Date().toISOString(),
+        })
           .then((room) => {
             applyRoomSnapshot(set, room)
             set({ mpStatus: 'connected', lastMove: { from: promotionPending.from, to: promotionPending.to } })
@@ -751,41 +781,14 @@ export const useGameStore = create<GameStore>((set, get) => {
     // ─── Multiplayer ──────────────────────────────────
     async hostMultiplayer() {
       if (!isSupabaseEnabled()) {
-        // Fallback: old PeerJS path if Supabase env is missing in deployment.
-        set({ mpStatus: 'hosting', mpError: null, mpRoomId: null, mpReadOnly: false })
-        try {
-          const roomId = await hostRoom({
-            onConnect: () => {
-              const chess = new Chess()
-              saveCurrentFen('')
-              set({
-                mpStatus: 'connected',
-                screen: 'game',
-                chess,
-                gameMode: 'multiplayer',
-                playerColor: 'w',
-                mpRole: 'white',
-                selectedSquare: null,
-                legalMoveSquares: [],
-                capturedPieces: { w: [], b: [] },
-                gameStatus: 'playing',
-                lastMove: null,
-              })
-            },
-            onDisconnect: () => set({ mpStatus: 'idle' }),
-            onError: (err) => set({ mpStatus: 'error', mpError: err }),
-            onMessage: (msg) => applyPeerMoveMessage(msg, set, get),
-          })
-          set({ mpRoomLink: getRoomLink(roomId) })
-        } catch (e) {
-          set({ mpStatus: 'error', mpError: (e as Error).message })
-        }
+        set({ mpStatus: 'error', mpError: 'Supabase not configured' })
         return
       }
       set({ mpStatus: 'hosting', mpError: null })
       try {
         unsubscribeRoom(roomChannel)
         const me = getMultiplayerIdentity(get())
+        console.log('clientId', me)
         const roomId = `room-${Math.random().toString(36).slice(2, 10)}`
         const chess = new Chess()
         const room = await createRoom({
@@ -798,6 +801,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         })
         applyRoomSnapshot(set, room)
         roomChannel = subscribeRoomUpdates(roomId, (nextRoom) => {
+          console.log('received realtime update', nextRoom)
           applyRoomSnapshot(set, nextRoom)
           set({ mpStatus: 'connected' })
         })
@@ -823,42 +827,17 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     async joinMultiplayer(roomId: string) {
       if (!isSupabaseEnabled()) {
-        // Fallback: old PeerJS path if Supabase env is missing in deployment.
-        set({ mpStatus: 'joining', mpError: null, mpRoomId: null, mpReadOnly: false })
-        try {
-          await joinRoom(roomId, {
-            onConnect: () => {
-              const chess = new Chess()
-              saveCurrentFen('')
-              set({
-                mpStatus: 'connected',
-                screen: 'game',
-                chess,
-                gameMode: 'multiplayer',
-                playerColor: 'b',
-                mpRole: 'black',
-                selectedSquare: null,
-                legalMoveSquares: [],
-                capturedPieces: { w: [], b: [] },
-                gameStatus: 'playing',
-                lastMove: null,
-              })
-            },
-            onDisconnect: () => set({ mpStatus: 'idle' }),
-            onError: (err) => set({ mpStatus: 'error', mpError: err }),
-            onMessage: (msg) => applyPeerMoveMessage(msg, set, get),
-          })
-        } catch (e) {
-          set({ mpStatus: 'error', mpError: (e as Error).message })
-        }
+        set({ mpStatus: 'error', mpError: 'Supabase not configured' })
         return
       }
       set({ mpStatus: 'joining', mpError: null })
       try {
         unsubscribeRoom(roomChannel)
         const me = getMultiplayerIdentity(get())
+        console.log('clientId', me)
         let room = await getRoom(roomId)
         if (!room) throw new Error('Room not found')
+        console.log('room', room)
 
         const whitePlayerId = room.white_player ? String(room.white_player) : null
         const blackPlayerId = room.black_player ? String(room.black_player) : null
@@ -877,9 +856,11 @@ export const useGameStore = create<GameStore>((set, get) => {
         const readOnly = !isWhite && !isBlack
         const playerColor: 'w' | 'b' = isBlack ? 'b' : 'w'
         const mpRole: 'white' | 'black' | 'spectator' = isWhite ? 'white' : isBlack ? 'black' : 'spectator'
+        console.log('playerColor', mpRole)
 
         applyRoomSnapshot(set, room)
         roomChannel = subscribeRoomUpdates(roomId, (nextRoom) => {
+          console.log('received realtime update', nextRoom)
           applyRoomSnapshot(set, nextRoom)
           set({ mpStatus: 'connected' })
         })
@@ -899,7 +880,6 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     leaveMultiplayer() {
-      mpCleanup()
       unsubscribeRoom(roomChannel)
       roomChannel = null
       set({
