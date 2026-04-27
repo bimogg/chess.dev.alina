@@ -49,23 +49,23 @@ export function MultiplayerLobby() {
   return (
     <div className="mp-lobby">
       <div className="mp-lobby-card">
-        <button className="setup-back" onClick={() => { leaveMultiplayer(); goToLanding() }}>← Back to Home</button>
+        <button className="setup-back" onClick={() => { leaveMultiplayer(); goToLanding() }}>← На главную</button>
 
         <div className="setup-header">
-          <h2 className="setup-title">Online Match</h2>
-          <p className="setup-subtitle">Supabase realtime room sync</p>
+          <h2 className="setup-title">Онлайн-матч</h2>
+          <p className="setup-subtitle">Игра по ссылке через Supabase Realtime</p>
         </div>
 
         <div className="mp-tabs">
-          <button className={`mp-tab ${tab === 'host' ? 'active' : ''}`} onClick={() => setTab('host')}>Host</button>
-          <button className={`mp-tab ${tab === 'join' ? 'active' : ''}`} onClick={() => setTab('join')}>Join</button>
+          <button className={`mp-tab ${tab === 'host' ? 'active' : ''}`} onClick={() => setTab('host')}>Создать</button>
+          <button className={`mp-tab ${tab === 'join' ? 'active' : ''}`} onClick={() => setTab('join')}>Войти</button>
         </div>
 
         {tab === 'host' && (
           <div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18, lineHeight: 1.6 }}>
-              Create a room and share the link. Your friend opens it and you start playing instantly.
-              You'll play <strong>White</strong>.
+              Создайте комнату и отправьте ссылку другу.
+              Комната синхронизирует ходы между устройствами. Вы играете <strong>белыми</strong>.
             </p>
             <button
               className="mp-host-action"
@@ -78,24 +78,24 @@ export function MultiplayerLobby() {
               }}
               disabled={mpStatus === 'hosting' || (mpAwaitingHostStart && mpRole === 'white')}
             >
-              {mpStatus === 'hosting' && !mpRoomLink ? 'Creating room…' : 'Create Room'}
+              {mpStatus === 'hosting' && !mpRoomLink ? 'Создаю комнату…' : 'Создать комнату'}
             </button>
 
             {mpRoomLink && mpAwaitingHostStart && mpRole === 'white' && (
               <div className="mp-room-share">
-                <div className="mp-room-share-label">Room created</div>
-                <div className="mp-room-share-label">Room ID: {mpRoomId}</div>
+                <div className="mp-room-share-label">Комната создана</div>
+                <div className="mp-room-share-label">ID комнаты: {mpRoomId}</div>
                 <div className="mp-room-link">
                   <input value={mpRoomLink} readOnly onFocus={(e) => e.target.select()} />
                   <button className="mp-room-copy" onClick={handleCopy}>
-                    {copied ? '✓ Copied' : 'Copy Link'}
+                    {copied ? '✓ Скопировано' : 'Скопировать ссылку'}
                   </button>
                 </div>
                 <div className="mp-room-status">
-                  Send this link to your friend. They will join as Black.
+                  Отправьте ссылку другу. Он присоединится чёрными.
                 </div>
                 <button className="mp-host-action" onClick={startHostedMultiplayer}>
-                  Start as White
+                  Начать белыми
                 </button>
               </div>
             )}
@@ -105,16 +105,16 @@ export function MultiplayerLobby() {
         {tab === 'join' && (
           <div>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18, lineHeight: 1.6 }}>
-              Paste the invite link or room code from your friend.
-              You'll play <strong>Black</strong>.
+              Вставьте ссылку-приглашение или код комнаты от друга.
+              Вы играете <strong>чёрными</strong>.
             </p>
             <div className="mp-input-group">
-              <div className="mp-input-label">Invite link or code</div>
+              <div className="mp-input-label">Ссылка или код комнаты</div>
               <input
                 className="mp-input"
                 value={roomInput}
                 onChange={(e) => setRoomInput(e.target.value)}
-                placeholder="cv-xxxxxxxx or full URL"
+                placeholder="cv-xxxxxxxx или полная ссылка"
                 autoFocus
               />
             </div>
@@ -123,7 +123,7 @@ export function MultiplayerLobby() {
               onClick={handleJoin}
               disabled={!roomInput.trim() || mpStatus === 'joining'}
             >
-              {mpStatus === 'joining' ? 'Connecting…' : 'Join Match'}
+              {mpStatus === 'joining' ? 'Подключение…' : 'Войти в матч'}
             </button>
           </div>
         )}
@@ -131,7 +131,7 @@ export function MultiplayerLobby() {
         {mpError && <div className="mp-error">{mpError}</div>}
 
         <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', marginTop: 22, lineHeight: 1.6 }}>
-          Powered by PeerJS · WebRTC peer-to-peer · Your moves never touch our servers
+          Игра по ссылке через Supabase Realtime · Комната синхронизирует ходы между устройствами
         </div>
       </div>
     </div>

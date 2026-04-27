@@ -3,26 +3,26 @@ import { useGameStore } from '../../store/gameStore'
 import { BoardTheme, GameMode, SetupConfig, Difficulty, PieceSkin } from '../../types'
 
 const BOARD_THEMES: { id: BoardTheme; label: string; light: string; dark: string }[] = [
-  { id: 'classic', label: 'Classic', light: '#f0d9b5', dark: '#b58863' },
-  { id: 'green',   label: 'Green',   light: '#eeeed2', dark: '#769656' },
-  { id: 'walnut',  label: 'Walnut',  light: '#f0c68a', dark: '#8b5633' },
-  { id: 'ice',     label: 'Ice',     light: '#e3f2fd', dark: '#5d8aa8' },
-  { id: 'crimson', label: 'Crimson', light: '#fce4ec', dark: '#c2185b' },
+  { id: 'classic', label: 'Классика', light: '#f0d9b5', dark: '#b58863' },
+  { id: 'green',   label: 'Зелёная',  light: '#eeeed2', dark: '#769656' },
+  { id: 'walnut',  label: 'Орех',     light: '#f0c68a', dark: '#8b5633' },
+  { id: 'ice',     label: 'Лёд',      light: '#e3f2fd', dark: '#5d8aa8' },
+  { id: 'crimson', label: 'Бордовая', light: '#fce4ec', dark: '#c2185b' },
 ]
 
 const DIFFICULTIES: { id: Difficulty; label: string }[] = [
-  { id: 1, label: 'Beginner' },
-  { id: 2, label: 'Easy' },
-  { id: 3, label: 'Medium' },
-  { id: 4, label: 'Hard' },
-  { id: 5, label: 'Expert' },
+  { id: 1, label: 'Новичок' },
+  { id: 2, label: 'Лёгкий' },
+  { id: 3, label: 'Средний' },
+  { id: 4, label: 'Сложный' },
+  { id: 5, label: 'Эксперт' },
 ]
 
 const SKINS: { id: PieceSkin; label: string; pro: boolean }[] = [
-  { id: 'classic', label: 'Classic', pro: false },
-  { id: 'gold',    label: 'Gold',    pro: true },
-  { id: 'marble',  label: 'Marble',  pro: true },
-  { id: 'neon',    label: 'Neon',    pro: true },
+  { id: 'classic', label: 'Классика', pro: false },
+  { id: 'gold',    label: 'Золото',   pro: true },
+  { id: 'marble',  label: 'Мрамор',   pro: true },
+  { id: 'neon',    label: 'Неон',     pro: true },
 ]
 
 export function SetupScreen() {
@@ -64,41 +64,41 @@ export function SetupScreen() {
     <div className="setup">
       <div className="setup-card">
         <button className="setup-back" onClick={goToLanding}>
-          ← Back to Home
+          ← На главную
         </button>
 
         <div className="setup-header">
-          <h2 className="setup-title">Configure Your Match</h2>
-          <p className="setup-subtitle">Choose your settings and start playing</p>
+          <h2 className="setup-title">Настройка партии</h2>
+          <p className="setup-subtitle">Выберите параметры и начните игру</p>
         </div>
 
         {/* Game Mode */}
         <div className="setup-section">
-          <div className="setup-label">Game Mode</div>
+          <div className="setup-label">Режим игры</div>
           <div className="setup-options">
             <button
               className={`setup-option ${mode === 'local' ? 'selected' : ''}`}
               onClick={() => setMode('local')}
             >
               <span className="setup-option-icon">👥</span>
-              <span className="setup-option-label">Friend Local</span>
-              <span className="setup-option-sub">Same device</span>
+              <span className="setup-option-label">Локально с другом</span>
+              <span className="setup-option-sub">На одном устройстве</span>
             </button>
             <button
               className={`setup-option ${mode === 'vs-ai' ? 'selected' : ''}`}
               onClick={() => setMode('vs-ai')}
             >
               <span className="setup-option-icon">🤖</span>
-              <span className="setup-option-label">vs Stockfish</span>
-              <span className="setup-option-sub">Real chess engine</span>
+              <span className="setup-option-label">Против Stockfish</span>
+              <span className="setup-option-sub">Шахматный движок</span>
             </button>
             <button
               className={`setup-option ${mode === 'multiplayer' ? 'selected' : ''}`}
               onClick={() => setMode('multiplayer')}
             >
               <span className="setup-option-icon">🌐</span>
-              <span className="setup-option-label">Online P2P</span>
-              <span className="setup-option-sub">Share invite link</span>
+              <span className="setup-option-label">Онлайн по ссылке</span>
+              <span className="setup-option-sub">Supabase Realtime</span>
             </button>
           </div>
         </div>
@@ -107,29 +107,29 @@ export function SetupScreen() {
         {mode === 'vs-ai' && (
           <>
             <div className="setup-section">
-              <div className="setup-label">Your Color</div>
+              <div className="setup-label">Ваш цвет</div>
               <div className="setup-options">
                 <button
                   className={`setup-option ${playerColor === 'w' ? 'selected' : ''}`}
                   onClick={() => setPlayerColor('w')}
                 >
                   <span className="setup-option-icon">♔</span>
-                  <span className="setup-option-label">White</span>
-                  <span className="setup-option-sub">You move first</span>
+                  <span className="setup-option-label">Белые</span>
+                  <span className="setup-option-sub">Вы ходите первым</span>
                 </button>
                 <button
                   className={`setup-option ${playerColor === 'b' ? 'selected' : ''}`}
                   onClick={() => setPlayerColor('b')}
                 >
                   <span className="setup-option-icon">♚</span>
-                  <span className="setup-option-label">Black</span>
-                  <span className="setup-option-sub">AI moves first</span>
+                  <span className="setup-option-label">Чёрные</span>
+                  <span className="setup-option-sub">ИИ ходит первым</span>
                 </button>
               </div>
             </div>
 
             <div className="setup-section">
-              <div className="setup-label">Difficulty</div>
+              <div className="setup-label">Сложность</div>
               <div className="difficulty-pills">
                 {DIFFICULTIES.map(d => (
                   <button
@@ -147,7 +147,7 @@ export function SetupScreen() {
 
         {/* Board Theme */}
         <div className="setup-section">
-          <div className="setup-label">Board Theme</div>
+          <div className="setup-label">Тема доски</div>
           <div className="theme-swatches">
             {BOARD_THEMES.map(t => (
               <button
@@ -167,7 +167,7 @@ export function SetupScreen() {
         {/* Piece Skin */}
         <div className="setup-section">
           <div className="setup-label">
-            Piece Skin
+            Скин фигур
             <button
               onClick={openProUpgrade}
               style={{
@@ -181,7 +181,7 @@ export function SetupScreen() {
                 cursor: 'pointer',
               }}
             >
-              ★ UNLOCK ALL →
+              ★ ОТКРЫТЬ ВСЁ →
             </button>
           </div>
           <div className="theme-swatches">
@@ -214,8 +214,8 @@ export function SetupScreen() {
         <div className="setup-section">
           <div className="setup-toggle-row">
             <div>
-              <div className="setup-label" style={{ marginBottom: 2 }}>Focus Mode</div>
-              <div className="setup-toggle-desc">Dim irrelevant pieces, highlight legal moves only</div>
+              <div className="setup-label" style={{ marginBottom: 2 }}>Режим фокуса</div>
+              <div className="setup-toggle-desc">Приглушает лишние фигуры и оставляет только легальные ходы</div>
             </div>
             <label className="toggle">
               <input type="checkbox" checked={focusMode} onChange={e => setFocusMode(e.target.checked)} />
@@ -225,7 +225,7 @@ export function SetupScreen() {
         </div>
 
         <button className="btn-start-match" onClick={handleStart}>
-          {mode === 'multiplayer' ? 'Continue to Lobby →' : 'Start Match →'}
+          {mode === 'multiplayer' ? 'Перейти в лобби →' : 'Начать партию →'}
         </button>
       </div>
     </div>

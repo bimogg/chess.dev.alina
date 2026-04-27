@@ -75,17 +75,13 @@ export function LeaderboardScreen() {
   return (
     <div className="screen-page">
       <div className="screen-page-inner">
-        <button className="screen-page-back" onClick={goToLanding}>← Home</button>
-        <div className="screen-page-title">Leaderboard</div>
-        <div className="screen-page-sub">
-          {supabaseAvailable
-            ? 'Top players across the ChessFlow — ranked by ELO.'
-            : 'Demo data — connect Supabase to see real players.'}
-        </div>
+        <button className="screen-page-back" onClick={goToLanding}>← На главную</button>
+        <div className="screen-page-title">Лидерборд</div>
+        <div className="screen-page-sub"></div>
 
         <div className="leaderboard-filters">
           <button className={`leaderboard-filter ${filter === 'global' ? 'active' : ''}`} onClick={() => setFilter('global')}>
-            🌍 Global
+            🌍 Все города
           </button>
           {allCities.map(city => (
             <button key={city} className={`leaderboard-filter ${filter === city ? 'active' : ''}`} onClick={() => setFilter(city)}>
@@ -96,14 +92,14 @@ export function LeaderboardScreen() {
 
         <div className="leaderboard-table">
           <div className="leaderboard-row header">
-            <div>RANK</div>
-            <div>PLAYER</div>
-            <div>CITY</div>
+            <div>МЕСТО</div>
+            <div>ИГРОК</div>
+            <div>ГОРОД</div>
             <div>ELO</div>
-            <div>WINS</div>
+            <div>ПОБЕДЫ</div>
           </div>
-          {loading && <div className="empty-state">Loading…</div>}
-          {!loading && entries.length === 0 && <div className="empty-state">No players yet — be the first!</div>}
+          {loading && <div className="empty-state">Загрузка…</div>}
+          {!loading && entries.length === 0 && <div className="empty-state">Пока нет игроков — станьте первым!</div>}
           {!loading && entries.map((e, i) => {
             const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''
             const isMe = profile && e.username === profile.username
@@ -113,7 +109,7 @@ export function LeaderboardScreen() {
                 <div className="leaderboard-name">
                   {e.username}
                   {e.isPro && <span className="badge-pro">PRO</span>}
-                  {isMe && <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600 }}>(YOU)</span>}
+                  {isMe && <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600 }}>(ВЫ)</span>}
                 </div>
                 <div className="leaderboard-city">{e.city || '—'}</div>
                 <div className="leaderboard-elo">{e.elo}</div>

@@ -11,18 +11,18 @@ export function ProfileScreen() {
   return (
     <div className="screen-page">
       <div className="screen-page-inner">
-        <button className="screen-page-back" onClick={goToLanding}>← Home</button>
-        <div className="screen-page-title">Profile</div>
-        <div className="screen-page-sub">Your stats, ELO, and account.</div>
+        <button className="screen-page-back" onClick={goToLanding}>← На главную</button>
+        <div className="screen-page-title">Профиль</div>
+        <div className="screen-page-sub">Ваша статистика, ELO и статус аккаунта.</div>
 
         {!profile ? (
           <div className="profile-card">
             <div className="empty-state">
               <div style={{ fontSize: 48, marginBottom: 16 }}>👤</div>
-              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>You're not signed in</div>
-              <div style={{ marginBottom: 20 }}>Create an account to track ELO, climb the leaderboard, and sync across devices.</div>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Профиль не создан</div>
+              <div style={{ marginBottom: 20 }}>Создайте гостевой профиль, чтобы сохранять ELO и участвовать в лидерборде.</div>
               <button className="mp-host-action" style={{ width: 'auto', padding: '12px 28px', display: 'inline-block' }} onClick={openAuthModal}>
-                Sign in or play as guest
+                Создать профиль
               </button>
             </div>
           </div>
@@ -37,7 +37,7 @@ export function ProfileScreen() {
                     {isPro && <span className="badge-pro">PRO</span>}
                   </div>
                   <div className="profile-meta">
-                    {profile.city ? `📍 ${profile.city}` : 'No city set'} · Member since today
+                    {profile.city ? `📍 ${profile.city}` : 'Город не указан'} · Участник с сегодня
                   </div>
                 </div>
               </div>
@@ -49,17 +49,17 @@ export function ProfileScreen() {
                 </div>
                 <div className="profile-stat">
                   <div className="profile-stat-val">{profile.gamesPlayed}</div>
-                  <div className="profile-stat-label">Games</div>
+                  <div className="profile-stat-label">Партии</div>
                 </div>
                 <div className="profile-stat">
                   <div className="profile-stat-val">{profile.wins}</div>
-                  <div className="profile-stat-label">Wins</div>
+                  <div className="profile-stat-label">Победы</div>
                 </div>
                 <div className="profile-stat">
                   <div className="profile-stat-val">
                     {profile.gamesPlayed > 0 ? Math.round((profile.wins / profile.gamesPlayed) * 100) : 0}%
                   </div>
-                  <div className="profile-stat-label">Win Rate</div>
+                  <div className="profile-stat-label">Винрейт</div>
                 </div>
               </div>
             </div>
@@ -67,17 +67,17 @@ export function ProfileScreen() {
             {!isPro && (
               <div className="profile-card">
                 <div className="pro-cta-card">
-                  <div className="pro-cta-title">★ Upgrade to Pro</div>
+                  <div className="pro-cta-title">★ Перейти на Pro</div>
                   <div className="pro-cta-desc">
-                    Unlock 3 premium piece skins (Gold, Marble, Neon), priority Stockfish depth, cloud sync, and a Pro badge on the leaderboard.
+                    Откройте 3 премиум-скина фигур (Gold, Marble, Neon), приоритетный анализ Stockfish и бейдж Pro в лидерборде.
                   </div>
-                  <button className="pro-cta-btn" onClick={openProUpgrade}>See plans →</button>
+                  <button className="pro-cta-btn" onClick={openProUpgrade}>Посмотреть планы →</button>
                 </div>
               </div>
             )}
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-              <button className="modal-close-btn" onClick={handleSignOut}>Sign out</button>
+              <button className="modal-close-btn" onClick={handleSignOut}>Выйти</button>
             </div>
           </>
         )}

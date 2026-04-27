@@ -10,60 +10,59 @@ export function ProUpgradeModal() {
       <div className="modal-card pro-modal" onClick={e => e.stopPropagation()}>
         <div className="pro-modal-hero">
           <div className="pro-modal-crown">♛</div>
-          <div className="pro-modal-title">ChessFlow Pro</div>
-          <div className="pro-modal-tag">Unlock the full immersive experience</div>
+          <div className="pro-modal-title">ChessVerse Pro</div>
+          <div className="pro-modal-tag">Расширенные визуальные возможности</div>
         </div>
 
         <div className="pro-tier-grid">
           <div className="pro-tier">
-            <div className="pro-tier-name">Free</div>
+            <div className="pro-tier-name">Бесплатно</div>
             <div className="pro-tier-price">$0</div>
-            <div className="pro-tier-period">forever</div>
+            <div className="pro-tier-period">навсегда</div>
             <ul className="pro-tier-features">
-              <li>3D board with classic pieces</li>
-              <li>Stockfish AI (5 levels)</li>
-              <li>Local 2-player + online P2P</li>
-              <li>AI Coach analysis</li>
-              <li>Local game history</li>
+              <li>3D-доска и классические фигуры</li>
+              <li>Stockfish (5 уровней)</li>
+              <li>Локальная игра и онлайн по ссылке</li>
+              <li>AI-разбор партии</li>
+              <li>Локальная история партий</li>
             </ul>
             <button
               className="pro-tier-btn"
               disabled
               style={{ cursor: 'default', opacity: 0.6 }}
             >
-              Current plan
+              Текущий план
             </button>
           </div>
 
           <div className="pro-tier featured">
-            <div className="pro-tier-badge">RECOMMENDED</div>
+            <div className="pro-tier-badge">РЕКОМЕНДУЕМ</div>
             <div className="pro-tier-name">Pro</div>
             <div className="pro-tier-price">$4.99</div>
-            <div className="pro-tier-period">per month</div>
+            <div className="pro-tier-period">в месяц</div>
             <ul className="pro-tier-features">
-              <li>Everything in Free</li>
-              <li><strong>3 premium piece skins</strong></li>
-              <li>Gold, Marble & Neon materials</li>
-              <li>Priority Stockfish (depth 18)</li>
-              <li>Cloud sync across devices</li>
-              <li>Pro badge on leaderboard</li>
+              <li>Всё из бесплатного плана</li>
+              <li><strong>3 премиум-скина фигур</strong></li>
+              <li>Материалы Gold, Marble и Neon</li>
+              <li>Приоритетный анализ Stockfish</li>
+              <li>Бейдж Pro в лидерборде</li>
             </ul>
             <button
               className="pro-tier-btn"
               onClick={buyPro}
               disabled={isPro}
             >
-              {isPro ? '✓ Pro Active' : 'Upgrade to Pro'}
+              {isPro ? '✓ Pro активен' : 'Перейти на Pro'}
             </button>
           </div>
         </div>
 
         <div className="pro-modal-disclaimer">
-          Demo: payment is simulated locally. In production, Stripe integration would handle billing.
+          Деморежим: оплата не подключена. Реальный платёжный сценарий — в roadmap.
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <button className="modal-close-btn" onClick={closeProUpgrade}>Maybe later</button>
+          <button className="modal-close-btn" onClick={closeProUpgrade}>Позже</button>
         </div>
       </div>
     </div>

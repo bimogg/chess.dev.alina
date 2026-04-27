@@ -30,11 +30,11 @@ export function SkinsShopModal() {
   return (
     <div className="modal-overlay" onClick={closeSkinsShop}>
       <div className="modal-card" onClick={e => e.stopPropagation()}>
-        <div className="modal-title">Piece Skins</div>
+        <div className="modal-title">Скины фигур</div>
         <div className="modal-subtitle">
           {isPro
-            ? 'You own all skins. Tap to switch.'
-            : 'Premium skins are part of ChessFlow Pro.'}
+            ? 'Все скины уже открыты. Нажмите, чтобы переключить.'
+            : 'Премиум-скины входят в ChessVerse Pro.'}
         </div>
 
         <div className="skins-grid">
@@ -52,7 +52,7 @@ export function SkinsShopModal() {
                 <div className={`skin-preview ${s.id}`}>{s.icon}</div>
                 <div className="skin-name">{s.label}</div>
                 <div className={`skin-status ${owned ? 'owned' : 'locked'}`}>
-                  {owned ? (selected ? '✓ Selected' : 'Owned') : 'Pro only'}
+                  {owned ? (selected ? '✓ Выбран' : 'Доступен') : 'Только Pro'}
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>
                   {s.description}
@@ -65,10 +65,10 @@ export function SkinsShopModal() {
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
           {!isPro && (
             <button className="pro-cta-btn" style={{ width: 'auto', padding: '8px 18px' }} onClick={() => { closeSkinsShop(); openProUpgrade() }}>
-              ★ Get Pro to unlock
+              ★ Открыть через Pro
             </button>
           )}
-          <button className="modal-close-btn" onClick={closeSkinsShop}>Close</button>
+          <button className="modal-close-btn" onClick={closeSkinsShop}>Закрыть</button>
         </div>
       </div>
     </div>

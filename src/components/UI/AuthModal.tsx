@@ -19,7 +19,7 @@ export function AuthModal() {
     setError(null)
     setLoading(true)
     try {
-      if (!username.trim()) { setError('Pick a username'); setLoading(false); return }
+      if (!username.trim()) { setError('Введите никнейм'); setLoading(false); return }
       setLocalProfile(username.trim(), city.trim())
       await refreshProfile()
       closeAuthModal()
@@ -32,41 +32,41 @@ export function AuthModal() {
   return (
     <div className="modal-overlay" onClick={closeAuthModal}>
       <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
-        <div className="modal-title">Quick play</div>
+        <div className="modal-title">Быстрый старт</div>
         <div className="modal-subtitle">
-          Save your stats locally and appear on the leaderboard.
+          Профиль создаётся локально (guest/clientId), статистика сохраняется на устройстве.
         </div>
 
         <div className="auth-tabs">
-          <button className="auth-tab active">Guest</button>
+          <button className="auth-tab active">Гость</button>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="mp-input-group">
-            <div className="mp-input-label">Username</div>
-            <input className="mp-input" required value={username} onChange={e => setUsername(e.target.value)} placeholder="MagnusJr" />
+            <div className="mp-input-label">Никнейм</div>
+            <input className="mp-input" required value={username} onChange={e => setUsername(e.target.value)} placeholder="Игрок" />
           </div>
           <div className="mp-input-group">
-            <div className="mp-input-label">City (for leaderboard)</div>
-            <input className="mp-input" value={city} onChange={e => setCity(e.target.value)} placeholder="Almaty" />
+            <div className="mp-input-label">Город (для лидерборда)</div>
+            <input className="mp-input" value={city} onChange={e => setCity(e.target.value)} placeholder="Алматы" />
           </div>
 
           {error && <div className="mp-error">{error}</div>}
 
           <button type="submit" className="mp-host-action" disabled={loading} style={{ marginTop: 10 }}>
-            {loading ? 'Working…' : 'Start playing'}
+            {loading ? 'Сохраняю…' : 'Начать игру'}
           </button>
         </form>
 
         {!supabaseAvailable && (
           <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', marginTop: 14, lineHeight: 1.6 }}>
-            Supabase isn't configured — only guest mode is available.<br />
-            Add VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY to .env to enable cloud accounts.
+            Supabase не настроен — доступен только гостевой режим.<br />
+            Добавьте VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY в .env для облачной синхронизации.
           </div>
         )}
 
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
-          <button className="modal-close-btn" onClick={closeAuthModal}>Cancel</button>
+          <button className="modal-close-btn" onClick={closeAuthModal}>Закрыть</button>
         </div>
       </div>
     </div>

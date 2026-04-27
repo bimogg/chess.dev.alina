@@ -116,13 +116,13 @@ export function GameOverModal() {
             }}
             disabled={coachAnalyzing}
             style={{ marginBottom: 10, opacity: movesPlayed === 0 ? 0.55 : 1 }}
-            title={movesPlayed === 0 ? 'No moves recorded for this game' : 'Run Stockfish analysis'}
+            title={movesPlayed === 0 ? 'В этой партии нет ходов для разбора' : 'Запустить анализ Stockfish'}
           >
             {coachAnalyzing
               ? '🧠 Анализирую…'
               : movesPlayed === 0
                 ? '🧠 Нет ходов для разбора'
-                : '🧠 Разобрать партию (AI Coach)'}
+                : '🧠 Разобрать партию (AI-разбор)'}
           </button>
           <div style={{ display: 'flex', gap: 10 }}>
             <button

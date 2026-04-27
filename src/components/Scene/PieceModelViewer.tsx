@@ -2,22 +2,32 @@ import { Suspense, useMemo, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { useGLTF, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
+import { useGameStore } from '../../store/gameStore'
 
 // ── Renders a single GLB piece, centred at world origin, white material ──
 function PieceModel({ pieceKey }: { pieceKey: string }) {
+  const { appTheme } = useGameStore()
   const url = `/models/pieces/white_${pieceKey}.glb`
   const { scene } = useGLTF(url)
 
   // Per-instance material — one per Canvas so WebGL contexts stay independent
-  const mat = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: '#ffffff',
-        roughness: 0.3,
-        metalness: 0.1,
-      }),
-    []
-  )
+  const mat = useMemo(() => {
+    if (appTheme === 'light') {
+      // Keep premium red tone, but preserve shape details via lights/highlights.
+      return new THREE.MeshStandardMaterial({
+        color: '#d3342a',
+        roughness: 0.36,
+        metalness: 0.12,
+        emissive: '#2b0505',
+        emissiveIntensity: 0.22,
+      })
+    }
+    return new THREE.MeshStandardMaterial({
+      color: '#ffffff',
+      roughness: 0.3,
+      metalness: 0.1,
+    })
+  }, [appTheme])
   useEffect(() => () => { mat.dispose() }, [mat])
 
   const cloned = useMemo(() => {
@@ -60,12 +70,14 @@ export function PieceModelViewer({ pieceKey }: { pieceKey: string }) {
       }}
       style={{ position: 'absolute', inset: 0 }}
     >
-      {/* Soft fill — keeps the white piece readable on a dark background */}
-      <ambientLight intensity={1.0} />
+      {/* Soft fill — keeps piece details readable in both themes */}
+      <ambientLight intensity={0.72} />
       {/* Main key light */}
-      <directionalLight position={[3, 7, 4]}  intensity={1.6} castShadow={false} />
+      <directionalLight position={[3, 7, 4]}  intensity={1.35} castShadow={false} />
       {/* Soft rim from the opposite side */}
-      <directionalLight position={[-3, 3, -2]} intensity={0.3} />
+      <directionalLight position={[-3, 3, -2]} intensity={0.55} />
+      {/* Top specular kick so carvings/edges are visible */}
+      <directionalLight position={[0, 5, 1]} intensity={0.42} />
 
       <Suspense fallback={null}>
         <PieceModel pieceKey={pieceKey} />

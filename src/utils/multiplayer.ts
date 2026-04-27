@@ -1,7 +1,6 @@
 /**
- * P2P multiplayer via PeerJS WebRTC.
- * One player creates a room and gets a share link.
- * The other opens the link and connects directly — no server.
+ * Legacy PeerJS helpers kept for compatibility experiments.
+ * Current production online flow uses Supabase Realtime rooms.
  */
 
 import Peer, { DataConnection } from 'peerjs'
@@ -27,7 +26,7 @@ let myId: string | null = null
 let handlers: MpHandlers | null = null
 
 function makeRoomId(): string {
-  // Short, readable, lowercase-only id (PeerJS doesn't accept all chars)
+  // Short, readable, lowercase-only id.
   const alpha = 'abcdefghjkmnpqrstuvwxyz23456789'
   let s = 'cv-'
   for (let i = 0; i < 8; i++) s += alpha[Math.floor(Math.random() * alpha.length)]

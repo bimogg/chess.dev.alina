@@ -4,12 +4,12 @@ import { ShowcaseScene } from '../Scene/ShowcaseScene'
 import { PieceModelViewer } from '../Scene/PieceModelViewer'
 
 const FEATURES = [
-  { icon: '♟', name: '3D-доска',          desc: 'Объёмные фигуры, тени и удобная камера.' },
-  { icon: '👥', name: 'Игра с другом',     desc: 'Локальная партия на одном устройстве.' },
-  { icon: '🤖', name: 'Игра против ИИ',    desc: 'Локальный ИИ делает легальные ходы.' },
-  { icon: '◎',  name: 'Focus Mode',        desc: 'Подсветка допустимых ходов для новичков.' },
-  { icon: '📜', name: 'История партий',    desc: 'Сохранение ходов и завершённых игр.' },
-  { icon: '🧠', name: 'AI Coach',          desc: 'Будущий анализ ошибок и сильных ходов.' },
+  { name: '3D-доска',       desc: 'Объёмные фигуры, тени и удобная камера.' },
+  { name: 'Игра с другом',  desc: 'Локальная партия на одном устройстве.' },
+  { name: 'Игра против ИИ', desc: 'Локальный ИИ делает легальные ходы.' },
+  { name: 'Режим фокуса',   desc: 'Подсветка допустимых ходов для новичков.' },
+  { name: 'История партий', desc: 'Сохранение ходов и завершённых игр.' },
+  { name: 'AI-разбор',      desc: 'Разбор ошибок и сильных ходов после партии.' },
 ]
 
 const WHY_ITEMS = [
@@ -20,13 +20,13 @@ const WHY_ITEMS = [
   },
   {
     num: '02',
-    title: 'Серьёзный ИИ + AI Coach',
-    desc: 'Stockfish 16 на 5 уровнях сложности и пост-игровой анализ — это не игрушка для убийства времени, а инструмент для настоящего прогресса.',
+    title: 'Сильный ИИ + AI-разбор',
+    desc: 'Stockfish на 5 уровнях сложности и пост-игровой анализ — это не игрушка для убийства времени, а инструмент для настоящего прогресса.',
   },
   {
     num: '03',
-    title: 'P2P без сервера',
-    desc: 'Мультиплеер через WebRTC — ваши ходы идут напрямую другу, минуя нас. Это и приватнее, и быстрее, и не требует ничего настраивать.',
+    title: 'Онлайн по ссылке',
+    desc: 'Игра по ссылке через Supabase Realtime. Комната синхронизирует ходы между устройствами.',
   },
 ]
 
@@ -114,7 +114,7 @@ export function LandingPage() {
       {/* ── NAV ── */}
       <nav className="lp-nav">
         <span className="lp-nav-logo">
-          Chess<span className="lp-red">Verse</span> 3D
+          Chess<span className="lp-red">Verse</span>
         </span>
         <div className="lp-nav-right">
           <button className="lp-nav-link" onClick={scrollToFeatures}>
@@ -135,7 +135,7 @@ export function LandingPage() {
               Войти
             </button>
           )}
-          <button className="lp-nav-theme" onClick={toggleAppTheme} title="Toggle theme">
+          <button className="lp-nav-theme" onClick={toggleAppTheme} title="Переключить тему">
             {appTheme === 'dark' ? '🌙' : '☀️'}
           </button>
           <button className="lp-btn-sm" onClick={goToSetup}>
@@ -150,12 +150,12 @@ export function LandingPage() {
         <div className="lp-hero-left">
           <p className="lp-hero-label">NFACTORIAL &bull; 2 ТУР</p>
           <h1 className="lp-hero-title">
-            <span className="lp-hero-title-main">ChessFlow</span>
+            <span className="lp-hero-title-main">ChessVerse</span>
             <span className="lp-hero-title-3d">3D</span>
           </h1>
           <p className="lp-hero-sub">
-            Иммерсивные 3D-шахматы с настоящим Stockfish, AI Coach
-            и онлайн-игрой по ссылке. Прямо в браузере.
+            ChessVerse = быстрый старт партии по ссылке + AI-разбор.
+            Иммерсивные 3D-шахматы с настоящим Stockfish прямо в браузере.
           </p>
           <div className="lp-hero-cta">
             <button className="lp-btn-hero-primary" onClick={goToSetup}>
@@ -192,15 +192,14 @@ export function LandingPage() {
       <section className="lp-feats" ref={featuresSectionRef}>
         <div className="lp-container">
           <div className="lp-section-header">
-            <span className="lp-section-label">Возможности</span>
             <h2 className="lp-section-title">Возможности</h2>
             <p className="lp-section-sub">Всё, что нужно для современной 3D-игры</p>
           </div>
 
           <div className="lp-feats-grid">
-            {FEATURES.map(f => (
+            {FEATURES.map((f, i) => (
               <div key={f.name} className="lp-feat-card">
-                <div className="lp-feat-card-icon">{f.icon}</div>
+                <div className="lp-feat-card-kicker">0{i + 1}</div>
                 <h3 className="lp-feat-card-name">{f.name}</h3>
                 <p className="lp-feat-card-desc">{f.desc}</p>
               </div>
@@ -246,7 +245,7 @@ export function LandingPage() {
       <section className="lp-why">
         <div className="lp-container">
           <div className="lp-section-header">
-            <h2 className="lp-section-title">Почему ChessFlow</h2>
+            <h2 className="lp-section-title">Почему ChessVerse</h2>
           </div>
           <div className="lp-why-grid">
             {WHY_ITEMS.map(w => (
@@ -264,7 +263,7 @@ export function LandingPage() {
       <section className="lp-cta">
         <h2 className="lp-cta-title">Готовы сделать первый ход?</h2>
         <p className="lp-cta-sub">
-          Бесплатно. Без серверов. Прямо в браузере.
+          Быстрый старт партии по ссылке и AI-разбор в браузере.
         </p>
         <button className="lp-btn-primary" onClick={goToSetup}>
           Начать игру
@@ -276,8 +275,7 @@ export function LandingPage() {
         <span className="lp-footer-logo">
           Chess<span className="lp-red">Verse</span> 3D
         </span>
-        <span className="lp-footer-mid">Создано Алиной · nFactorial 2 тур</span>
-        <span className="lp-footer-stack">React · Three.js · Stockfish · PeerJS · Supabase</span>
+        <span className="lp-footer-stack">React · Three.js · Stockfish · Supabase</span>
       </footer>
 
     </div>
