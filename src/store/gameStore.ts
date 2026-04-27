@@ -146,13 +146,23 @@ function applyAppTheme(t: AppTheme) {
 let roomChannel: RealtimeChannel | null = null
 
 function getMultiplayerIdentity(state: GameStore): string {
-  if (state.profile?.id) return state.profile.id
+  void state
   const key = 'cv_mp_guest_id'
   const existing = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null
   if (existing) return existing
   const generated = `guest-${Math.random().toString(36).slice(2, 10)}`
   if (typeof window !== 'undefined') window.localStorage.setItem(key, generated)
   return generated
+}
+
+function markHostedRoom(roomId: string, clientId: string) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(`cv_room_host_${roomId}`, clientId)
+}
+
+function isHostedByCurrentClient(roomId: string, clientId: string): boolean {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(`cv_room_host_${roomId}`) === clientId
 }
 
 function applyRoomSnapshot(set: (partial: Partial<GameStore>) => void, room: RoomRow) {
@@ -795,10 +805,12 @@ export const useGameStore = create<GameStore>((set, get) => {
           id: roomId,
           fen: chess.fen(),
           pgn: chess.pgn(),
+          // DB stores compact turns ('w'/'b'): initial turn is white.
           turn: 'w',
           white_player: me,
           black_player: null,
         })
+        markHostedRoom(roomId, me)
         applyRoomSnapshot(set, room)
         roomChannel = subscribeRoomUpdates(roomId, (nextRoom) => {
           console.log('received realtime update', nextRoom)
@@ -851,7 +863,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
         const whiteNow = room.white_player ? String(room.white_player) : null
         const blackNow = room.black_player ? String(room.black_player) : null
-        const isWhite = whiteNow === meId
+        const isWhite = whiteNow === meId || isHostedByCurrentClient(roomId, meId)
         const isBlack = blackNow === meId
         const readOnly = !isWhite && !isBlack
         const playerColor: 'w' | 'b' = isBlack ? 'b' : 'w'
