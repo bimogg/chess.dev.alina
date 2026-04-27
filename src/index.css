@@ -2002,12 +2002,60 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 
   .sidebar { width: 280px; }
   .main-layout { flex-direction: column; }
-  .canvas-area { min-height: 50vh; }
+  .canvas-area { min-height: 56vh; }
   .sidebar { width: 100%; max-height: none; border-left: none; border-top: 1px solid var(--border); }
 }
 
 @media (max-width: 580px) {
+  .lp-nav {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .lp-nav-logo {
+    font-size: 10px;
+    letter-spacing: 0.09em;
+  }
+  .lp-nav-right {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .lp-nav-link {
+    font-size: 9px;
+    padding: 6px 8px;
+  }
+  .lp-btn-sm {
+    font-size: 9px;
+    padding: 6px 10px;
+  }
+
   .lp-hero-left { padding: 72px 20px 24px; }
+  .lp-hero-title-main,
+  .lp-hero-title-3d {
+    font-size: clamp(38px, 13vw, 52px);
+    letter-spacing: -1.6px;
+  }
+  .lp-hero-sub {
+    font-size: 13px;
+    max-width: 100%;
+    margin: 16px 0 24px;
+  }
+  .lp-hero-cta {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .lp-btn-hero-primary,
+  .lp-btn-hero-ghost {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+    padding: 12px 14px;
+    font-size: 11px;
+  }
+
   .lp-feats-grid { grid-template-columns: 1fr; gap: 12px; padding: 0 16px; }
   .lp-feat-card { padding: 18px 16px; }
   .lp-section-header { margin-bottom: 36px; }
@@ -2032,6 +2080,35 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   .lp-btn-hero-primary, .lp-btn-hero-ghost { padding: 12px 18px; font-size: 11px; }
   .screen-page { padding: 32px 16px; }
   .screen-page-title { font-size: 24px; }
+
+  .main-layout { min-height: 100dvh; }
+  .canvas-area {
+    min-height: 52dvh;
+    max-height: 62dvh;
+  }
+  .sidebar {
+    border-top: 1px solid var(--border);
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .sidebar-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    backdrop-filter: blur(4px);
+  }
+  .sidebar-v2 .sidebar-section {
+    padding: 10px 12px;
+  }
+  .status-hero-title {
+    font-size: 15px;
+  }
+  .status-hero-turn {
+    font-size: 11px;
+  }
+  .invite-card-btn,
+  .btn {
+    min-height: 40px;
+  }
 }
 
 /* ─── SETUP SCREEN ───────────────────────────────────────────────── */
