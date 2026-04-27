@@ -1009,14 +1009,11 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   background: #f7f8fa;
   color: #1f2328;
 }
-:root[data-theme='light'] .lp-feat-slide-name { color: #1f2328; }
-:root[data-theme='light'] .lp-feat-slide-num { color: rgba(0,0,0,0.04); }
 :root[data-theme='light'] .lp-section-title,
 :root[data-theme='light'] .lp-cta-title,
 :root[data-theme='light'] .lp-hero-title-main { color: #1f2328; }
 :root[data-theme='light'] .lp-hero-title-3d { color: rgba(0,0,0,0.32); }
-:root[data-theme='light'] .lp-hero-left { background: #f7f8fa; }
-:root[data-theme='light'] .lp-hero-left::after { background: linear-gradient(to right, #f7f8fa, transparent); }
+/* hero background is now driven by .lp-hero gradient in both themes */
 :root[data-theme='light'] .lp-cta { background: #ffffff; }
 :root[data-theme='light'] .lp-footer { background: #ffffff; }
 :root[data-theme='light'] .lp-why-item { background: #ffffff; }
@@ -1164,40 +1161,50 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
+  /* Solid base color guarantees no holes anywhere.
+     Two huge overlapping radial glows on top — they both span far past 50%,
+     so the gradient is continuous edge-to-edge with no perceptible seam. */
+  background-color: #0f0c0b;
+  background-image:
+    radial-gradient(ellipse 140% 110% at 72% 50%,
+      rgba(212, 168, 67, 0.14) 0%, transparent 72%),
+    radial-gradient(ellipse 140% 110% at 20% 78%,
+      rgba(193, 57, 43, 0.12) 0%, transparent 68%);
+}
+:root[data-theme='light'] .lp-hero {
+  background-color: #faf6ee;
+  background-image:
+    radial-gradient(ellipse 140% 110% at 72% 50%,
+      rgba(212, 168, 67, 0.20) 0%, transparent 72%),
+    radial-gradient(ellipse 140% 110% at 20% 78%,
+      rgba(193, 57, 43, 0.08) 0%, transparent 68%);
 }
 
 .lp-hero-left {
   position: relative;
   z-index: 10;
   flex-shrink: 0;
-  width: 46%;
+  width: 48%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 0 56px 0 72px;
-  background: #080808;
+  /* No background — let the hero gradient show through */
+  background: transparent;
 }
-.lp-hero-left::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: -72px;
-  width: 72px;
-  height: 100%;
-  background: linear-gradient(to right, #080808, transparent);
-  pointer-events: none;
-  z-index: 2;
-}
+/* No more harsh fadeout split — the 3D scene now has its own soft halo */
+.lp-hero-left::after { display: none; }
 
 .lp-hero-label {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.22);
+  color: #C1392B;
   margin: 0 0 32px;
   font-family: system-ui, -apple-system, sans-serif;
 }
+:root[data-theme='light'] .lp-hero-label { color: #C1392B; }
 
 .lp-hero-title {
   display: flex;
@@ -1222,16 +1229,17 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 }
 
 .lp-hero-sub {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
-  color: rgba(255,255,255,0.48);
+  color: rgba(255,255,255,0.78);
   margin: 22px 0 40px;
   font-family: system-ui, -apple-system, sans-serif;
   letter-spacing: 0;
   line-height: 1.6;
-  max-width: 340px;
+  max-width: 380px;
+  text-shadow: 0 1px 12px rgba(0,0,0,0.4);
 }
-:root[data-theme='light'] .lp-hero-sub { color: rgba(0,0,0,0.6); }
+:root[data-theme='light'] .lp-hero-sub { color: rgba(31,35,40,0.78); text-shadow: none; }
 
 .lp-hero-cta {
   display: flex;
@@ -1283,13 +1291,39 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 :root[data-theme='light'] .lp-btn-hero-ghost { color: rgba(0,0,0,0.7); border-color: rgba(0,0,0,0.25); }
 :root[data-theme='light'] .lp-btn-hero-ghost:hover { color: #1f2328; border-color: rgba(0,0,0,0.6); }
 
+/* 3D scene container — full hero width, no DOM seam at 50%.
+   pointer-events: auto here so the user can drag the board.
+   The text column on the left has z-index:10 and physically occupies the
+   left 48% of the hero — its area catches button/link clicks first;
+   the rest of the canvas is free for OrbitControls drag interaction. */
 .lp-hero-scene {
   position: absolute;
-  left: 40%;
+  left: 0;
   right: 0;
   top: 0;
+  width: 100%;
   height: 100%;
   z-index: 1;
+  pointer-events: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  cursor: grab;
+}
+.lp-hero-scene:active { cursor: grabbing; }
+.lp-hero-scene::before,
+.lp-hero-scene::after { display: none; content: none; }
+
+/* The Canvas element itself + its r3f wrapper div — force transparent.
+   Some browsers/r3f versions inject inline background; override it here. */
+.lp-hero-scene > div,
+.lp-hero-scene canvas {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: block;
 }
 
 .lp-scroll-indicator {
@@ -1374,218 +1408,76 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 .lp-resume-btn:hover { border-color: rgba(185,28,28,0.4); color: rgba(255,255,255,0.78); }
 .lp-resume-date { font-size: 10px; color: rgba(255,255,255,0.2); font-weight: 400; }
 
-/* ─────────────────────── FEATURES ──────────────────────────────── */
+/* ─────────────────────── FEATURES (compact 2×3 grid) ───────────── */
 
 .lp-feats {
+  padding: 88px 0;
   border-top: 1px solid rgba(255,255,255,0.05);
 }
 
-.lp-feat-slide {
-  position: relative;
-  height: 100vh;
-  display: flex;
-  flex-direction: row;
-  overflow: hidden;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-}
-
-.lp-feat-slide-line {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 0;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(185,28,28,0.6), rgba(185,28,28,0.1) 70%, transparent);
-  transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: 0s;
-  z-index: 2;
-}
-.lp-feat-slide--visible .lp-feat-slide-line {
-  width: 40%;
-  transition-delay: 1.0s;
-}
-
-.lp-feat-slide-left {
-  flex: 0 0 40%;
-  display: flex;
-  align-items: center;
-  padding: 0 5vw 0 8vw;
-  position: relative;
-  z-index: 1;
-}
-
-.lp-feat-slide-right {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: 0.5s;
-}
-.lp-feat-slide--visible .lp-feat-slide-right {
-  opacity: 1;
-}
-
-.lp-feat-slide-inner {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-}
-
-.lp-feat-slide-num {
-  display: block;
-  font-size: clamp(100px, 14vw, 180px);
-  font-weight: 800;
-  line-height: 0.85;
-  color: rgba(255,255,255,0.03);
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-  margin-bottom: -0.12em;
-  user-select: none;
-  opacity: 0;
-  transform: translateY(40px);
-  transition:
-    opacity   0.8s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: 0s;
-}
-
-.lp-feat-slide-name {
-  font-size: clamp(28px, 4vw, 56px);
-  font-weight: 700;
-  color: #F5F5F5;
-  letter-spacing: -0.03em;
-  line-height: 1.08;
-  margin: 0 0 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  opacity: 0;
-  transform: translateY(40px);
-  transition:
-    opacity   0.8s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: 0.1s;
-}
-
-.lp-feat-slide-desc {
-  font-size: clamp(13px, 1.4vw, 16px);
-  color: #71717A;
-  line-height: 1.65;
-  max-width: 380px;
-  margin: 0;
-  opacity: 0;
-  transform: translateY(40px);
-  transition:
-    opacity   0.8s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: 0.22s;
-}
-
-.lp-feat-slide--visible .lp-feat-slide-num,
-.lp-feat-slide--visible .lp-feat-slide-name,
-.lp-feat-slide--visible .lp-feat-slide-desc {
-  opacity: 1;
-  transform: none;
-}
-
-.lp-soon {
-  display: inline-block;
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  padding: 3px 9px;
-  background: rgba(185,28,28,0.08);
-  color: rgba(185,28,28,0.65);
-  border: 1px solid rgba(185,28,28,0.16);
-  border-radius: 4px;
-  vertical-align: middle;
-}
-.lp-new {
-  display: inline-block;
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  padding: 3px 9px;
-  background: rgba(63,185,80,0.16);
-  color: #3fb950;
-  border: 1px solid rgba(63,185,80,0.3);
-  border-radius: 4px;
-  vertical-align: middle;
-}
-
-.lp-vis-board {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  width: min(400px, 70%);
-  aspect-ratio: 1;
-}
-.lp-vis-sq { aspect-ratio: 1; }
-.lp-vis-sq--light { background: rgba(255,255,255,0.06); }
-.lp-vis-sq--focus { background: rgba(226,75,74,0.18) !important; }
-
-.lp-vis-friend {
-  display: flex;
-  align-items: center;
-  gap: clamp(32px, 5vw, 72px);
-  font-size: clamp(80px, 12vw, 180px);
-  line-height: 1;
-  color: rgba(255,255,255,0.055);
-  user-select: none;
-}
-
-.lp-vis-ai {
-  font-family: 'Courier New', 'Consolas', monospace;
-  font-size: clamp(80px, 15vw, 200px);
-  font-weight: 700;
-  color: rgba(255,255,255,0.04);
-  letter-spacing: -0.02em;
-  user-select: none;
-}
-
-.lp-vis-history {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(8px, 1vw, 16px);
-  font-family: 'Courier New', 'Consolas', monospace;
-  font-size: clamp(13px, 1.7vw, 22px);
-  color: rgba(255,255,255,0.055);
-  user-select: none;
-  letter-spacing: 0.06em;
-}
-
-.lp-vis-coach {
+.lp-feats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: clamp(10px, 2vw, 24px);
-  font-size: clamp(40px, 6vw, 88px);
-  color: rgba(255,255,255,0.045);
-  user-select: none;
-  text-align: center;
-  line-height: 1.2;
+  gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
 }
 
-.lp-vis-mp {
+.lp-feat-card {
+  background: #111113;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 24px 22px;
   display: flex;
-  align-items: center;
-  gap: clamp(30px, 4vw, 60px);
-  font-size: clamp(48px, 8vw, 110px);
-  color: rgba(255,255,255,0.06);
-  user-select: none;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
-.lp-vis-mp-link {
-  font-family: 'Courier New', monospace;
-  font-size: clamp(20px, 2.4vw, 32px);
-  color: rgba(185,28,28,0.4);
+.lp-feat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 28px;
+  height: 2px;
+  background: #C1392B;
+  border-radius: 0 0 2px 0;
 }
+.lp-feat-card:hover {
+  border-color: rgba(193, 57, 43, 0.32);
+  transform: translateY(-2px);
+}
+
+.lp-feat-card-icon {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.lp-feat-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #F5F5F5;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.lp-feat-card-desc {
+  font-size: 13px;
+  color: #A1A1AA;
+  line-height: 1.55;
+  margin: 0;
+}
+
+:root[data-theme='light'] .lp-feat-card {
+  background: #ffffff;
+  border-color: rgba(0,0,0,0.08);
+}
+:root[data-theme='light'] .lp-feat-card-name { color: #1f2328; }
+:root[data-theme='light'] .lp-feat-card-desc { color: #57606a; }
+:root[data-theme='light'] .lp-feat-card:hover { border-color: rgba(193, 57, 43, 0.4); }
 
 /* ─────────────────────────── WHY ────────────────────────────────── */
 
@@ -1772,8 +1664,8 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   .lp-hero-left {
     width: 100%;
     height: auto;
-    padding: 96px 36px 36px;
-    background: linear-gradient(to bottom, #050505 70%, transparent 100%);
+    padding: 96px 28px 28px;
+    background: transparent;
     justify-content: flex-end;
   }
   .lp-hero-left::after { display: none; }
@@ -1781,13 +1673,14 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
     position: relative;
     left: auto; right: auto; top: auto;
     flex: 1;
-    min-height: 42vh;
+    min-height: 46vh;
   }
+  .lp-hero-scene::before { left: 4%; right: 4%; top: 6%; bottom: 12%; }
+  .lp-hero-scene::after { left: 14%; right: 14%; bottom: 8%; }
   .lp-why { padding: 72px 0; }
   .lp-pieces { padding: 72px 0; }
-  .lp-feat-slide { flex-direction: column; }
-  .lp-feat-slide-left { flex: 0 0 auto; padding: 80px 6vw 40px; min-height: 50vh; align-items: flex-end; }
-  .lp-feat-slide-right { flex: 1; min-height: 45vh; }
+  .lp-feats { padding: 64px 0; }
+  .lp-feats-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 0 20px; }
 
   .lp-why-grid   { grid-template-columns: 1fr; gap: 16px; }
   .lp-pieces-grid { grid-template-columns: 1fr; padding: 0 24px; }
@@ -1804,9 +1697,8 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 
 @media (max-width: 580px) {
   .lp-hero-left { padding: 72px 20px 24px; }
-  .lp-feat-slide-left { padding: 60px 20px 32px; }
-  .lp-feat-slide-right { min-height: 38vh; }
-  .lp-vis-friend { font-size: 80px; gap: 24px; }
+  .lp-feats-grid { grid-template-columns: 1fr; gap: 12px; padding: 0 16px; }
+  .lp-feat-card { padding: 18px 16px; }
   .lp-section-header { margin-bottom: 36px; }
   .lp-why-grid  { gap: 12px; }
   .lp-pieces-grid { padding: 0 16px; }

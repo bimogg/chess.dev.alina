@@ -4,118 +4,13 @@ import { ShowcaseScene } from '../Scene/ShowcaseScene'
 import { PieceModelViewer } from '../Scene/PieceModelViewer'
 
 const FEATURES = [
-  {
-    num: '01',
-    name: '3D-доска',
-    desc: 'Иммерсивная шахматная доска с объёмными фигурами, тенями и удобной камерой.',
-    visual: 'board',
-  },
-  {
-    num: '02',
-    name: 'Stockfish ИИ',
-    desc: 'Настоящий шахматный движок — 5 уровней сложности от новичка до эксперта.',
-    visual: 'ai',
-    isNew: true,
-  },
-  {
-    num: '03',
-    name: 'Игра онлайн по ссылке',
-    desc: 'Создайте комнату, отправьте ссылку другу — играйте напрямую через P2P. Без серверов.',
-    visual: 'mp',
-    isNew: true,
-  },
-  {
-    num: '04',
-    name: 'AI Coach',
-    desc: 'Stockfish разбирает каждый ход после партии: точность, блaндеры, рекомендации.',
-    visual: 'coach',
-    isNew: true,
-  },
-  {
-    num: '05',
-    name: 'Лидерборд по городам',
-    desc: 'ELO-рейтинг, топ-игроки, фильтр по вашему городу. Соревнуйтесь с локалом.',
-    visual: 'history',
-    isNew: true,
-  },
-  {
-    num: '06',
-    name: 'Premium-скины',
-    desc: 'Pro-аккаунт открывает Gold, Marble и Neon скины фигур. Ваша доска — ваш стиль.',
-    visual: 'friend',
-    isNew: true,
-  },
+  { icon: '♟', name: '3D-доска',          desc: 'Объёмные фигуры, тени и удобная камера.' },
+  { icon: '👥', name: 'Игра с другом',     desc: 'Локальная партия на одном устройстве.' },
+  { icon: '🤖', name: 'Игра против ИИ',    desc: 'Локальный ИИ делает легальные ходы.' },
+  { icon: '◎',  name: 'Focus Mode',        desc: 'Подсветка допустимых ходов для новичков.' },
+  { icon: '📜', name: 'История партий',    desc: 'Сохранение ходов и завершённых игр.' },
+  { icon: '🧠', name: 'AI Coach',          desc: 'Будущий анализ ошибок и сильных ходов.' },
 ]
-
-const BOARD_SQUARES = Array.from({ length: 64 }, (_, i) => i)
-const FOCUS_SQUARES = new Set([27, 28, 35, 36])
-const HISTORY_MOVES = ['1.  Magnus       2210', '2.  Hikaru_AI   2087', '3.  pawn_storm  1923', '4.  queen_sac    1854', '5.  silent_rook 1799']
-
-function FeatureVisual({ visual }: { visual: string }) {
-  if (visual === 'board') {
-    return (
-      <div className="lp-vis-board">
-        {BOARD_SQUARES.map(i => (
-          <div key={i} className={`lp-vis-sq${(Math.floor(i / 8) + i % 8) % 2 === 0 ? ' lp-vis-sq--light' : ''}`} />
-        ))}
-      </div>
-    )
-  }
-  if (visual === 'focus') {
-    return (
-      <div className="lp-vis-board">
-        {BOARD_SQUARES.map(i => (
-          <div
-            key={i}
-            className={[
-              'lp-vis-sq',
-              (Math.floor(i / 8) + i % 8) % 2 === 0 ? 'lp-vis-sq--light' : '',
-              FOCUS_SQUARES.has(i) ? 'lp-vis-sq--focus' : '',
-            ].join(' ').trim()}
-          />
-        ))}
-      </div>
-    )
-  }
-  if (visual === 'friend') {
-    return (
-      <div className="lp-vis-friend">
-        <span style={{ color: 'rgba(212,168,67,0.18)' }}>♕</span>
-        <span style={{ color: 'rgba(0,255,225,0.18)' }}>♚</span>
-      </div>
-    )
-  }
-  if (visual === 'ai') {
-    return <div className="lp-vis-ai">SF</div>
-  }
-  if (visual === 'mp') {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-        <div className="lp-vis-mp">
-          <span>♔</span>
-          <span style={{ fontSize: '0.6em' }}>↔</span>
-          <span>♚</span>
-        </div>
-        <div className="lp-vis-mp-link">cv-x7k2qm9p</div>
-      </div>
-    )
-  }
-  if (visual === 'history') {
-    return (
-      <div className="lp-vis-history">
-        {HISTORY_MOVES.map(m => <span key={m}>{m}</span>)}
-      </div>
-    )
-  }
-  if (visual === 'coach') {
-    return (
-      <div className="lp-vis-coach">
-        {['97%','94%','📈','♚×','▲','✓'].map(s => <span key={s}>{s}</span>)}
-      </div>
-    )
-  }
-  return null
-}
 
 const WHY_ITEMS = [
   {
@@ -188,7 +83,6 @@ export function LandingPage() {
   } = useGameStore()
   const lpRef              = useRef<HTMLDivElement>(null)
   const featuresSectionRef = useRef<HTMLElement>(null)
-  const featuresRef        = useRef<(HTMLDivElement | null)[]>([])
   const piecesRef          = useRef<HTMLElement>(null)
 
   const scrollToFeatures = () =>
@@ -211,25 +105,6 @@ export function LandingPage() {
       { threshold: 0.1, root }
     )
     cards.forEach(card => observer.observe(card))
-    return () => observer.disconnect()
-  }, [])
-
-  useEffect(() => {
-    const root   = lpRef.current
-    const slides = featuresRef.current.filter((el): el is HTMLDivElement => el !== null)
-    if (!root || !slides.length) return
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('lp-feat-slide--visible')
-            observer.unobserve(entry.target)
-          }
-        })
-      },
-      { threshold: 0.15, root }
-    )
-    slides.forEach(slide => observer.observe(slide))
     return () => observer.disconnect()
   }, [])
 
@@ -316,32 +191,25 @@ export function LandingPage() {
         </div>
       )}
 
-      {/* ── FEATURES ── */}
+      {/* ── FEATURES ── compact 2×3 grid, single screen ── */}
       <section className="lp-feats" ref={featuresSectionRef}>
-        {FEATURES.map((f, i) => (
-          <div
-            key={f.num}
-            className="lp-feat-slide"
-            ref={el => { featuresRef.current[i] = el }}
-          >
-            <div className="lp-feat-slide-line" />
-
-            <div className="lp-feat-slide-left">
-              <div className="lp-feat-slide-inner">
-                <span className="lp-feat-slide-num">{f.num}</span>
-                <h3 className="lp-feat-slide-name">
-                  {f.name}
-                  {f.isNew && <span className="lp-new">NEW</span>}
-                </h3>
-                <p className="lp-feat-slide-desc">{f.desc}</p>
-              </div>
-            </div>
-
-            <div className="lp-feat-slide-right">
-              <FeatureVisual visual={f.visual} />
-            </div>
+        <div className="lp-container">
+          <div className="lp-section-header">
+            <span className="lp-section-label">Возможности</span>
+            <h2 className="lp-section-title">Возможности</h2>
+            <p className="lp-section-sub">Всё, что нужно для современной 3D-игры</p>
           </div>
-        ))}
+
+          <div className="lp-feats-grid">
+            {FEATURES.map(f => (
+              <div key={f.name} className="lp-feat-card">
+                <div className="lp-feat-card-icon">{f.icon}</div>
+                <h3 className="lp-feat-card-name">{f.name}</h3>
+                <p className="lp-feat-card-desc">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ── PIECES SHOWCASE ── */}
