@@ -1,103 +1,176 @@
 # ChessVerse 3D
 
-> Created by **Alina** for **nFactorial — 2nd Round**
+> Иммерсивная 3D-платформа для игры в шахматы — с настоящим Stockfish, AI Coach,
+> онлайн-игрой по ссылке через P2P, лидербордом по городам и Pro-подпиской с
+> премиум-скинами фигур.
 
-A modern 3D chess platform built with React, Three.js, and React Three Fiber. Play locally with a friend or against an AI opponent, with full chess rules, beautiful 3D visualization, and a clean product-grade flow: Landing → Setup → Game.
-
----
-
-## Who It's For
-
-Chess players and beginners who want an immersive 3D chess experience right in the browser — no account, no backend, no paid APIs.
-
-## Why It's Valuable
-
-- Runs 100% in the browser with zero server dependency
-- Real 3D GLB piece models with shadows and lighting
-- Full chess rules via chess.js (promotion, castling, en passant, check/stalemate/draw)
-- Focus Mode for beginners — dims irrelevant pieces, shows only legal moves
-- AI Hint prefers captures and checks — teaches good habits
-- Three board themes (Classic, Green, Walnut)
-- LocalStorage save/restore — games persist between sessions
+**Демо:** _деплой на Vercel — добавь ссылку после публикации_
+**GitHub:** _добавь ссылку на репо_
 
 ---
 
-## Features
+## Что это и для кого
 
-| Feature | Status |
-|---|---|
-| 3D Chess Board (React Three Fiber + GLB models) | ✅ |
-| Local 2-player mode | ✅ |
-| Play vs AI (random legal moves, chess.js) | ✅ |
-| Full chess rules: castling, en passant, promotion | ✅ |
-| Pawn promotion: Queen / Rook / Bishop / Knight | ✅ |
-| Check / Checkmate / Stalemate / Draw detection | ✅ |
-| Legal move highlights (green dots/rings) | ✅ |
-| Selected square + last move highlights | ✅ |
-| Animated check/hint markers | ✅ |
-| Move history (SAN notation) | ✅ |
-| Captured pieces tracker | ✅ |
-| Focus Mode | ✅ |
-| AI Hint button (prefers captures > checks) | ✅ |
-| Board themes: Classic / Green / Walnut | ✅ |
-| Save & restore games (LocalStorage, up to 20) | ✅ |
-| Undo move | ✅ |
-| Landing page with features grid | ✅ |
-| Game setup screen (mode / color / theme) | ✅ |
-| OrbitControls + zoom limits + camera reset | ✅ |
-| AI Coach (deep analysis) | 🔜 Coming soon |
-| Multiplayer by link | 🔜 Coming soon |
-| City leaderboard (Astana, Almaty, Shymkent) | 🔜 Coming soon |
-| Pro tier (skins, cloud history) | 🔜 Coming soon |
+ChessVerse 3D — не очередная плоская доска. Это попытка собрать в одном месте всё,
+чего обычно не хватает в браузерных шахматных движках, и упаковать это в по-настоящему
+красивый 3D-интерфейс.
+
+**Целевая аудитория:**
+
+- Любители, которым надоели плоские доски с «нарисованными» фигурами
+- Игроки, которым нужен серьёзный соперник (Stockfish 18, 5 уровней) и реальный анализ партий
+- Друзья, которые хотят сыграть онлайн без регистрации, аккаунтов и серверов
+- Локальные комьюнити (Алматы, Астана, …), которым важен городской лидерборд
+
+**Почему это ценно:**
+
+1. **3D-движок** — настоящая глубина и тени, не «псевдо-3D» с CSS-перспективой
+2. **Реальный Stockfish** — не случайные ходы, а UCI-движок Stockfish 18 (WASM)
+3. **AI Coach** — пост-игровой анализ с метрикой точности и блaндерами
+4. **Онлайн без сервера** — WebRTC P2P через PeerJS: ваши ходы идут напрямую другу
+5. **Готова монетизация** — Pro-подписка с премиум-скинами как proof-of-concept бизнес-модели
 
 ---
 
-## Tech Stack
+## Стек
 
-- **React 18** + TypeScript
-- **Vite** — fast development and production builds
-- **@react-three/fiber** — React renderer for Three.js
-- **@react-three/drei** — helpers: OrbitControls, useGLTF, ContactShadows
-- **Three.js** — 3D rendering, ACES tone mapping, shadow maps
-- **chess.js** — complete chess logic and rule enforcement
-- **Zustand** — lightweight state management
+| Слой | Технология |
+| --- | --- |
+| UI / state | React 18, TypeScript, Zustand |
+| Сборка | Vite 5 |
+| 3D | Three.js + react-three-fiber + drei (GLB-модели) |
+| Шахматная логика | chess.js (полные правила, рокировка, en passant, превращение, мат/пат) |
+| ИИ | Stockfish 18 (WASM, web worker) |
+| AI Coach | Stockfish + собственный анализатор позиций |
+| Мультиплеер | PeerJS (WebRTC P2P) |
+| Auth + БД + лидерборд | Supabase (опционально) |
+| Хранилище | LocalStorage (фолбэк, всегда работает) |
 
 ---
 
-## Run Locally
+## Возможности (по уровням ТЗ)
+
+### Уровень «Слабый» ✅
+Доска и фигуры — есть, и не просто 8×8, а полноценная 3D-сцена с тенями.
+
+### Уровень «Средний» ✅
+- Полная проверка правил через chess.js
+- Рокировка, взятие на проходе, превращение пешки (модал-выбор фигуры)
+- Детект мата, пата, ничьей по троекратному повторению/50 ходов
+- Игра вдвоём на одном экране (`Local 2-player`)
+- Сохранение текущей и завершённых партий в LocalStorage
+
+### Уровень «Сильный» ✅
+- **Реальный Stockfish 18** на 5 уровнях сложности (Beginner → Expert)
+- История партий с возможностью загрузки
+- **Авторизация** через Supabase (email + пароль) или гостевой режим
+- **Светлая / тёмная тема** UI с переключением
+- Адаптивный дизайн — играет с телефона (sidebar складывается под доску)
+- Save/Load прогресса между сессиями
+
+### Уровень «Великий» ✅
+- **Мультиплеер по ссылке** через PeerJS WebRTC (без сервера)
+- **AI Coach** — после партии анализирует каждый ход через Stockfish
+  и показывает блaндеры, ошибки, неточности и общую метрику точности
+- **Лидерборд по городам** — глобальный + фильтр по городу пользователя
+- ELO-рейтинг с автоматическим пересчётом по результатам партий
+- **Pro-подписка** с премиум-скинами фигур (Gold, Marble, Neon)
+- Кнопка `Upgrade to Pro` с оформленным экраном тарифов
+  (платёж заглушён локально — в продакшене тут была бы Stripe)
+- **Уникальная ниша** — 3D-визуал + immersive experience как ключевой дифференциатор
+
+---
+
+## Запуск локально
+
+Требуется Node.js 18+ и npm.
 
 ```bash
+git clone <repo>
 cd chessverse-3d
-npm install
-npm run dev
-# Open http://localhost:5173
+npm install        # установит зависимости и автоматически скопирует Stockfish в /public/stockfish/
+npm run dev        # http://localhost:5173
 ```
 
-## Production Build
+`npm install` запускает скрипт `scripts/copy-stockfish.js`, который копирует
+WASM-движок Stockfish из `node_modules/stockfish/` в `public/stockfish/` —
+он подгружается в браузере как Web Worker.
 
-```bash
-npm run build
-# Output in dist/
+### Подключение Supabase (опционально)
+
+Без Supabase приложение работает в local-only режиме: профиль и стата хранятся
+в LocalStorage, лидерборд показывает demo-данные. Чтобы включить настоящий бэкенд:
+
+1. Зарегистрируйся бесплатно на [supabase.com](https://supabase.com), создай проект
+2. В **SQL Editor** прогони миграцию из `supabase/migrations/001_init.sql` —
+   она создаст таблицы `profiles`, `games`, RLS-политики и триггер автосоздания профиля
+3. В **Settings → API** скопируй URL и anon-key
+4. Создай `.env` (используй `.env.example` как шаблон):
+
+```
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGc...
+```
+
+5. Перезапусти `npm run dev`. Теперь регистрация, синк профиля между устройствами
+   и реальный лидерборд по городам работают.
+
+---
+
+## Структура проекта
+
+```
+src/
+├── App.tsx                    # router screens + глобальные модалки
+├── main.tsx
+├── index.css                  # ~1300 строк, темы, адаптив, все секции
+├── store/
+│   └── gameStore.ts           # Zustand: единое состояние всей игры + flows
+├── types/
+│   └── index.ts               # все доменные типы
+├── utils/
+│   ├── chess.ts               # хелперы поверх chess.js
+│   ├── engine.ts              # Stockfish UCI wrapper + heuristic fallback
+│   ├── coach.ts               # пост-игровой анализатор партий
+│   ├── multiplayer.ts         # PeerJS WebRTC обвязка
+│   ├── supabase.ts            # клиент + auth + leaderboard
+│   └── storage.ts             # LocalStorage (профиль, скины, темы, партии)
+└── components/
+    ├── Landing/LandingPage.tsx
+    ├── Setup/SetupScreen.tsx
+    ├── Multiplayer/MultiplayerLobby.tsx
+    ├── Profile/{ProfileScreen,LeaderboardScreen}.tsx
+    ├── Scene/                 # 3D: ChessScene, Board, Piece, Markers, ShowcaseScene
+    └── UI/                    # Sidebar, Modals (Pro, Skins, Auth, CoachReport, Promotion)
+public/
+└── stockfish/                 # копируется postinstall'ом, в git не коммитится
+supabase/
+└── migrations/001_init.sql    # схема + RLS
+scripts/
+└── copy-stockfish.js          # копирует WASM-движок в public/
 ```
 
 ---
 
-## Project Flow
+## Что я бы добавила следующим
 
-```
-Landing Page  →  Setup Screen  →  3D Chess Game
-   (hero,          (mode /         (board +
-  features)        color /         sidebar)
-                   theme)
-```
+Список того, что не успела или сознательно не сделала, чтобы было видно — куда продукт может расти:
 
-## Roadmap
-
-- **AI Coach** — position analysis, opening database, personalized training
-- **Multiplayer by link** — real-time play via WebSockets, no account needed
-- **City Leaderboard** — Astana, Almaty, Shymkent community rankings
-- **Pro tier** — custom piece skins, cloud game history, advanced analytics
+- **Stripe-интеграция** для Pro-подписки (сейчас покупка симулируется локально)
+- **WebRTC TURN-сервер** для случаев, когда P2P не пробивает корпоративный NAT
+- **Турниры** — swiss, knockout, с автоматическим парингом по ELO
+- **Daily puzzle** — ежедневная задача, как на chess.com
+- **Premove** и **drag-to-move** — сейчас только tap-to-move
+- **Часы** (blitz / rapid / classical) — очень не хватает для серьёзной игры
+- **Дебютная книга** в AI Coach — «вы вышли из теории на 7-м ходу»
+- **PWA** — оффлайн-режим, install-on-home-screen
 
 ---
 
-*Built with ♟ by Alina for nFactorial 2nd Round*
+## Лицензия
+
+MIT (код), GPL-3.0 (Stockfish используется как WASM web worker).
+
+---
+
+Сделано Алиной для **nFactorial 2 тур**, Апрель 2026 ❤️

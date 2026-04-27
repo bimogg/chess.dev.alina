@@ -3,6 +3,10 @@
  * Copy the Stockfish engine files from node_modules into /public/stockfish/
  * so the browser can load them as a Web Worker at /stockfish/stockfish.js.
  * Runs automatically after `npm install`.
+ *
+ * Supports stockfish v16 (src/) and v18+ (bin/) layouts.
+ * Defaults to the lite-single variant — single-threaded, smaller wasm,
+ * works in any browser without SharedArrayBuffer / cross-origin isolation.
  */
 
 import { existsSync, mkdirSync, readdirSync, copyFileSync, statSync, writeFileSync } from 'node:fs'
@@ -11,58 +15,87 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')
-const SRC = join(ROOT, 'node_modules', 'stockfish', 'src')
-const OUT = join(ROOT, 'public', 'stockfish')
+const PKG  = join(ROOT, 'node_modules', 'stockfish')
+const OUT  = join(ROOT, 'public', 'stockfish')
 
-const FALLBACK_WORKER = `// Stockfish placeholder — engine files were not found in node_modules.
-// Run \`npm install\` to install Stockfish, or download stockfish.js manually.
-self.onmessage = function(e) {
-  // Respond with engine-not-available so the wrapper falls back to heuristic AI.
-  if (e.data === 'uci') {
-    // Don't respond — the wrapper will time out and fall back.
-  }
-};
+const FALLBACK_WORKER = `// Stockfish placeholder — engine files were not found.
+// Run \`npm install\` to install Stockfish.
+self.onmessage = function() { /* ignore — wrapper falls back to heuristic AI */ };
 `
 
 function ensureDir(p) {
   if (!existsSync(p)) mkdirSync(p, { recursive: true })
 }
 
+function findSourceDir() {
+  // v18+ uses bin/, v16 used src/
+  const bin = join(PKG, 'bin')
+  const src = join(PKG, 'src')
+  if (existsSync(bin)) return bin
+  if (existsSync(src)) return src
+  return null
+}
+
+function pickPrimary(files) {
+  // Prefer "lite-single" → no SharedArrayBuffer, smaller, works everywhere.
+  // Fall back to "single", then "lite", then any .js.
+  const matchers = [
+    /lite.*single.*\.js$/,
+    /single.*lite.*\.js$/,
+    /single.*\.js$/,
+    /lite.*\.js$/,
+    /^stockfish.*\.js$/,
+  ]
+  for (const re of matchers) {
+    const m = files.find((f) => re.test(f) && !f.endsWith('.wasm') && !f.includes('asm'))
+    if (m) return m
+  }
+  return files.find((f) => f.endsWith('.js')) ?? null
+}
+
 function copyAll() {
   ensureDir(OUT)
 
-  if (!existsSync(SRC)) {
-    console.warn('[copy-stockfish] node_modules/stockfish/src not found — installing fallback')
+  const SRC = findSourceDir()
+  if (!SRC) {
+    console.warn('[copy-stockfish] node_modules/stockfish not found — installing fallback')
     writeFileSync(join(OUT, 'stockfish.js'), FALLBACK_WORKER)
     return
   }
 
-  const files = readdirSync(SRC)
-  let primary = null
+  const allFiles = readdirSync(SRC)
 
-  for (const f of files) {
+  // Only copy the lite-single variant (~7 MB) — keeps deployment small.
+  // The full builds are >100 MB and need SharedArrayBuffer to actually run.
+  const wantedPattern = /^stockfish.*lite.*single.*\.(js|wasm|worker\.js)$/
+  const files = allFiles.filter((f) => wantedPattern.test(f))
+  const toCopy = files.length > 0 ? files : allFiles.filter((f) => /\.(js|wasm)$/.test(f) && !f.includes('asm'))
+
+  for (const f of toCopy) {
     const full = join(SRC, f)
-    if (!statSync(full).isFile()) continue
-    copyFileSync(full, join(OUT, f))
-    // Prefer the single-threaded NNUE build — works in any browser without
-    // SharedArrayBuffer / cross-origin isolation requirements.
-    if (!primary && /single.*\.js$/.test(f)) primary = f
+    try {
+      if (!statSync(full).isFile()) continue
+      copyFileSync(full, join(OUT, f))
+    } catch (e) {
+      console.warn(`[copy-stockfish] Skipping ${f}: ${e.message}`)
+    }
   }
 
-  if (!primary) {
-    // Fallback to any .js file
-    primary = files.find((f) => f.endsWith('.js')) ?? null
-  }
-
-  // Make /stockfish/stockfish.js the canonical entry, importing the chosen variant
-  if (primary && primary !== 'stockfish.js') {
-    const shim = `// Auto-generated entry. Imports the chosen Stockfish variant.\nimportScripts('./${primary}');\n`
-    writeFileSync(join(OUT, 'stockfish.js'), shim)
-    console.log(`[copy-stockfish] Stockfish ready → /stockfish/stockfish.js (loads ${primary})`)
-  } else if (primary === 'stockfish.js') {
-    console.log('[copy-stockfish] Stockfish ready → /stockfish/stockfish.js')
+  const primary = pickPrimary(toCopy)
+  if (primary) {
+    if (primary !== 'stockfish.js') {
+      // Importer shim. Browsers will resolve relative paths from /stockfish/.
+      const shim = `// Auto-generated entry. Loads the chosen Stockfish variant.
+// Source: ${primary}
+self.importScripts('./${primary}');
+`
+      writeFileSync(join(OUT, 'stockfish.js'), shim)
+      console.log(`[copy-stockfish] /stockfish/stockfish.js → loads ${primary}`)
+    } else {
+      console.log('[copy-stockfish] /stockfish/stockfish.js ready')
+    }
   } else {
-    console.warn('[copy-stockfish] No Stockfish .js file found — installing fallback')
+    console.warn('[copy-stockfish] No suitable Stockfish .js found — installing fallback')
     writeFileSync(join(OUT, 'stockfish.js'), FALLBACK_WORKER)
   }
 }
@@ -71,7 +104,6 @@ try {
   copyAll()
 } catch (e) {
   console.error('[copy-stockfish] Failed:', e.message)
-  // Don't break the install
   ensureDir(OUT)
   writeFileSync(join(OUT, 'stockfish.js'), FALLBACK_WORKER)
 }
