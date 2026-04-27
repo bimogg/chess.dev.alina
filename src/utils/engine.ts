@@ -12,10 +12,13 @@ let initPromise: Promise<boolean> | null = null
 
 type BestMoveResolver = (move: { from: string; to: string; promotion?: string } | null) => void
 type EvalResolver = (score: number) => void
+type AnalyzeResolver = (result: { score: number; bestMove: string | null }) => void
 
 let currentBestMoveResolver: BestMoveResolver | null = null
 let currentEvalResolver: EvalResolver | null = null
+let currentAnalyzeResolver: AnalyzeResolver | null = null
 let lastEvalScore: number | null = null
+let lastBestMoveUci: string | null = null
 
 // Map UI difficulty (1–5) to Stockfish skill level + depth
 const DIFFICULTY_SETTINGS = {
@@ -83,16 +86,19 @@ export function initEngine(): Promise<boolean> {
       if (msg.startsWith('bestmove')) {
         const parts = msg.split(/\s+/)
         const moveStr = parts[1]
+        const validMove = moveStr && moveStr !== '(none)' && moveStr !== '0000' ? moveStr : null
+        lastBestMoveUci = validMove
+
         if (currentBestMoveResolver) {
           const r = currentBestMoveResolver
           currentBestMoveResolver = null
-          if (!moveStr || moveStr === '(none)' || moveStr === '0000') {
+          if (!validMove) {
             r(null)
           } else {
             r({
-              from: moveStr.slice(0, 2),
-              to: moveStr.slice(2, 4),
-              promotion: moveStr.length > 4 ? moveStr[4] : undefined,
+              from: validMove.slice(0, 2),
+              to: validMove.slice(2, 4),
+              promotion: validMove.length > 4 ? validMove[4] : undefined,
             })
           }
         }
@@ -100,6 +106,11 @@ export function initEngine(): Promise<boolean> {
           const r = currentEvalResolver
           currentEvalResolver = null
           r(lastEvalScore ?? 0)
+        }
+        if (currentAnalyzeResolver) {
+          const r = currentAnalyzeResolver
+          currentAnalyzeResolver = null
+          r({ score: lastEvalScore ?? 0, bestMove: validMove })
         }
       }
     }
@@ -176,6 +187,43 @@ export async function evaluatePosition(fen: string, depth = 14): Promise<number>
       if (currentEvalResolver === resolve) {
         currentEvalResolver = null
         resolve(lastEvalScore ?? heuristicEval(fen))
+      }
+    }, 6000)
+  })
+}
+
+/**
+ * Full analyze: returns score (cp from white's POV) AND the best move (UCI).
+ * Used by the AI Coach to tell the user what they SHOULD have played.
+ */
+export async function analyzePosition(
+  fen: string,
+  depth = 14,
+): Promise<{ score: number; bestMove: string | null }> {
+  await initEngine()
+  if (!isReady || !worker) {
+    return { score: heuristicEval(fen), bestMove: null }
+  }
+
+  return new Promise((resolve) => {
+    if (currentAnalyzeResolver) {
+      const old = currentAnalyzeResolver
+      currentAnalyzeResolver = null
+      old({ score: 0, bestMove: null })
+    }
+    currentAnalyzeResolver = resolve
+    lastEvalScore = null
+    lastBestMoveUci = null
+    worker!.postMessage(`position fen ${fen}`)
+    worker!.postMessage(`go depth ${depth}`)
+
+    setTimeout(() => {
+      if (currentAnalyzeResolver === resolve) {
+        currentAnalyzeResolver = null
+        resolve({
+          score: lastEvalScore ?? heuristicEval(fen),
+          bestMove: lastBestMoveUci,
+        })
       }
     }, 6000)
   })

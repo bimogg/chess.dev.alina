@@ -48,11 +48,14 @@ export interface LeaderboardEntry {
 
 export interface MoveAnalysis {
   moveNumber: number
+  ply: number                  // half-move index (0-based)
   san: string
   color: 'w' | 'b'
-  evalBefore: number
+  evalBefore: number           // pawns, white POV
   evalAfter: number
-  delta: number
+  delta: number                // win-prob loss for the mover, 0–100 scale
+  cpLoss: number               // centipawn loss for the mover (always ≥ 0)
   classification: 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder'
-  bestMoveAlt?: string
+  bestMoveSan?: string         // what Stockfish would have played
+  comment?: string             // human-readable judgement, e.g. "drops a knight"
 }

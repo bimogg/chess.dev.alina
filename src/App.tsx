@@ -9,13 +9,17 @@ import { ProUpgradeModal } from './components/UI/ProUpgradeModal'
 import { SkinsShopModal } from './components/UI/SkinsShopModal'
 import { AuthModal } from './components/UI/AuthModal'
 import { CoachReportModal } from './components/UI/CoachReportModal'
+import { GameOverModal } from './components/UI/GameOverModal'
 import { MultiplayerLobby } from './components/Multiplayer/MultiplayerLobby'
 import { ProfileScreen } from './components/Profile/ProfileScreen'
 import { LeaderboardScreen } from './components/Profile/LeaderboardScreen'
 import { getRoomFromUrl } from './utils/multiplayer'
 
 export default function App() {
-  const { screen, promotionPending, goToMultiplayerLobby } = useGameStore()
+  const {
+    screen, promotionPending, goToMultiplayerLobby,
+    gameStatus, gameEndedAt, markGameEnd,
+  } = useGameStore()
 
   // If URL has ?room=... auto-redirect to multiplayer lobby
   useEffect(() => {
@@ -25,6 +29,15 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Detect game end → fire end-of-game modal once.
+  // Idempotent inside markGameEnd: only sets gameEndedAt + showGameOver if not already set.
+  useEffect(() => {
+    const isOver = gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw'
+    if (isOver && !gameEndedAt) {
+      markGameEnd()
+    }
+  }, [gameStatus, gameEndedAt, markGameEnd])
 
   let screenEl: JSX.Element
   if (screen === 'landing') screenEl = <LandingPage />
@@ -51,6 +64,7 @@ export default function App() {
       <SkinsShopModal />
       <AuthModal />
       <CoachReportModal />
+      <GameOverModal />
     </>
   )
 }

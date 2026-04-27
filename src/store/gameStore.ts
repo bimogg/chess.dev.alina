@@ -74,6 +74,11 @@ interface GameStore {
   coachAnalyzing: boolean
   coachProgress: { current: number; total: number } | null
 
+  // Game timing + end-of-game modal
+  gameStartedAt: number | null
+  gameEndedAt: number | null
+  showGameOver: boolean
+
   // Modals
   showProUpgrade: boolean
   showSkinsShop: boolean
@@ -131,6 +136,10 @@ interface GameStore {
   // ─── AI Coach ─────────────────────────────────────────
   runCoachAnalysis: () => Promise<void>
   closeCoachReport: () => void
+
+  // ─── End-of-game ──────────────────────────────────────
+  markGameEnd: () => void
+  closeGameOver: () => void
 }
 
 function needsPromotion(chess: Chess, from: string, to: string): boolean {
@@ -352,6 +361,10 @@ export const useGameStore = create<GameStore>((set, get) => {
     coachAnalyzing: false,
     coachProgress: null,
 
+    gameStartedAt: null,
+    gameEndedAt: null,
+    showGameOver: false,
+
     showProUpgrade: false,
     showSkinsShop: false,
     showAuthModal: false,
@@ -390,6 +403,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         hintSquare: null,
         hintToSquare: null,
         coachReport: null,
+        gameStartedAt: Date.now(),
+        gameEndedAt: null,
+        showGameOver: false,
       })
       if (config.mode === 'vs-ai' && config.playerColor === 'b') {
         setTimeout(() => runStockfishMove(chess, config.difficulty, set, get), 600)
@@ -754,6 +770,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         hintSquare: null,
         hintToSquare: null,
         coachReport: null,
+        gameStartedAt: Date.now(),
+        gameEndedAt: null,
+        showGameOver: false,
       })
       if (gameMode === 'vs-ai' && playerColor === 'b') {
         setTimeout(() => runStockfishMove(chess, difficulty, set, get), 600)
@@ -986,6 +1005,9 @@ export const useGameStore = create<GameStore>((set, get) => {
           capturedPieces: computeCapturedPieces(chess),
           gameStatus: 'playing',
           lastMove: null,
+          gameStartedAt: null,        // not started yet — waits for host to press Start
+          gameEndedAt: null,
+          showGameOver: false,
         })
       } catch (e) {
         set({ mpStatus: 'error', mpError: (e as Error).message })
@@ -1002,6 +1024,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         mpReadOnly: false,
         mpAwaitingHostStart: false,
         mpStatus: 'connected',
+        gameStartedAt: Date.now(),     // game clock starts now
+        gameEndedAt: null,
+        showGameOver: false,
       })
     },
 
@@ -1054,6 +1079,9 @@ export const useGameStore = create<GameStore>((set, get) => {
           mpAwaitingHostStart: false,
           mpRoomId: roomId,
           mpRoomLink: getRoomLink(roomId),
+          gameStartedAt: Date.now(),    // joiner's clock starts now
+          gameEndedAt: null,
+          showGameOver: false,
         })
       } catch (e) {
         set({ mpStatus: 'error', mpError: (e as Error).message })
@@ -1091,6 +1119,16 @@ export const useGameStore = create<GameStore>((set, get) => {
       }
     },
     closeCoachReport() { set({ coachReport: null }) },
+
+    // ─── End-of-game ──────────────────────────────────
+    markGameEnd() {
+      // Idempotent: only fires once per game.
+      const { gameStatus, gameEndedAt } = get()
+      const isOver = gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw'
+      if (!isOver || gameEndedAt) return
+      set({ gameEndedAt: Date.now(), showGameOver: true })
+    },
+    closeGameOver() { set({ showGameOver: false }) },
   }
 })
 

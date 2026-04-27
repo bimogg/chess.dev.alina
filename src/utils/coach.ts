@@ -1,10 +1,16 @@
 /**
- * AI Coach — post-game analysis.
- * Walks through every move and uses Stockfish to find blunders & inaccuracies.
+ * AI Coach — honest post-game analysis.
+ *
+ * Uses Stockfish to walk through every move and produces a real verdict:
+ *   • Average centipawn loss (ACPL) — the standard chess-engine metric
+ *   • Lichess-style accuracy from win-probability deltas
+ *   • Explicit best-move alternative for every blunder/mistake
+ *   • Identifies the single decisive moment (largest swing) of the game
+ *   • Writes a specific verdict, not a generic one ("on move 14 you …")
  */
 
 import { Chess } from 'chess.js'
-import { evaluatePosition } from './engine'
+import { analyzePosition } from './engine'
 import { MoveAnalysis } from '../types'
 
 export interface CoachReport {
@@ -15,73 +21,157 @@ export interface CoachReport {
   blackBlunders: number
   blackMistakes: number
   blackInaccuracies: number
-  whiteAccuracy: number
+  whiteAccuracy: number       // 0–100
   blackAccuracy: number
+  whiteAcpl: number            // average centipawn loss (lower = better)
+  blackAcpl: number
+  decisiveMoment: MoveAnalysis | null  // single move that swung the game most
+  verdict: string              // 2–3 sentences, specific, no fluff
   moves: MoveAnalysis[]
-  summary: string
-}
-
-function classifyDelta(delta: number): MoveAnalysis['classification'] {
-  // delta is from the perspective of the side that just moved — positive = good for them
-  if (delta >= -0.2) return 'best'
-  if (delta >= -0.6) return 'good'
-  if (delta >= -1.5) return 'inaccuracy'
-  if (delta >= -3.0) return 'mistake'
-  return 'blunder'
 }
 
 export type CoachProgress = (current: number, total: number) => void
 
+// ─── Win probability + accuracy (lichess-style) ────────────────────────────
+// CP score → win-probability percentage (0–100).
+// Formula: WP = 50 + 50 * (2 / (1 + e^{-0.00368208 * cp}) - 1)
+function cpToWinProb(cpPawns: number): number {
+  const cp = Math.max(-2000, Math.min(2000, cpPawns * 100))
+  return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1)
+}
+
+// Lichess accuracy curve from WP-loss for a single move
+function moveAccuracy(wpLoss: number): number {
+  // wpLoss is in [0, 100]; clamp
+  const x = Math.max(0, wpLoss)
+  return Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * x) - 3.1669))
+}
+
+function classifyByCpLoss(cpLoss: number): MoveAnalysis['classification'] {
+  // cpLoss is in centipawns, always ≥ 0
+  if (cpLoss < 10)  return 'best'
+  if (cpLoss < 50)  return 'good'
+  if (cpLoss < 150) return 'inaccuracy'
+  if (cpLoss < 300) return 'mistake'
+  return 'blunder'
+}
+
+// ─── Convert UCI move (e.g. "e2e4", "e7e8q") to SAN in a given position ────
+function uciToSan(fen: string, uci: string): string | undefined {
+  try {
+    const c = new Chess(fen)
+    const from = uci.slice(0, 2)
+    const to = uci.slice(2, 4)
+    const promotion = uci.length > 4 ? uci[4] : undefined
+    const move = c.move({ from, to, promotion })
+    return move?.san
+  } catch {
+    return undefined
+  }
+}
+
+// ─── Human-readable comment for a bad move ─────────────────────────────────
+function commentFor(
+  cls: MoveAnalysis['classification'],
+  san: string,
+  bestSan: string | undefined,
+  cpLoss: number,
+): string | undefined {
+  if (cls === 'best' || cls === 'good') return undefined
+  const cpStr = Math.round(cpLoss).toString()
+  const lossPawns = (cpLoss / 100).toFixed(1)
+
+  if (cls === 'blunder') {
+    if (bestSan && bestSan !== san) {
+      return `${san} loses ${lossPawns} pawns of advantage. Stockfish prefers ${bestSan} (−${cpStr} cp).`
+    }
+    return `${san} drops ${lossPawns} pawns — a critical blunder.`
+  }
+  if (cls === 'mistake') {
+    if (bestSan && bestSan !== san) {
+      return `${san} gives up ${lossPawns} pawns. ${bestSan} would have held the position.`
+    }
+    return `${san} costs you ${lossPawns} pawns of evaluation.`
+  }
+  // inaccuracy
+  if (bestSan && bestSan !== san) {
+    return `${san} is slightly inaccurate (−${cpStr} cp). ${bestSan} was sharper.`
+  }
+  return undefined
+}
+
+// ─── Main entry point ──────────────────────────────────────────────────────
 export async function analyzeGame(
   pgn: string,
-  onProgress?: CoachProgress
+  onProgress?: CoachProgress,
 ): Promise<CoachReport> {
   const chess = new Chess()
   chess.loadPgn(pgn)
   const history = chess.history({ verbose: true })
 
-  // Replay from start, evaluate each ply
+  // We replay from the start and analyze each ply at depth 14.
+  // For every move played we also compare against Stockfish's best move
+  // FROM THE PRE-MOVE POSITION — that's the "you should have played X" alt.
   const replay = new Chess()
   const analyses: MoveAnalysis[] = []
 
   for (let i = 0; i < history.length; i++) {
     const move = history[i]
     const fenBefore = replay.fen()
-    const evalBefore = await evaluatePosition(fenBefore, 12)
+
+    // Analyze the position BEFORE the move — gives us:
+    //   • the best move the engine sees here (alt for the user)
+    //   • the eval of the position the user is about to move in
+    const before = await analyzePosition(fenBefore, 14)
+
+    // Make the move and analyze the resulting position
     replay.move(move)
     const fenAfter = replay.fen()
-    const evalAfter = await evaluatePosition(fenAfter, 12)
+    const after = await analyzePosition(fenAfter, 14)
 
-    // Convert eval to side-perspective
-    // evalBefore is from white's POV, after move it's now opponent's turn
-    // The delta for the mover: their eval (from their POV) before vs after
+    // Express both evals from the MOVING side's perspective
     const sideMult = move.color === 'w' ? 1 : -1
-    const evalBeforeForMover = evalBefore * sideMult
-    const evalAfterForMover = evalAfter * sideMult
-    const delta = evalAfterForMover - evalBeforeForMover
+    const evalBeforeForMover = before.score * sideMult
+    const evalAfterForMover  = after.score * sideMult
+
+    // Win-probability loss for the mover
+    const wpBefore = cpToWinProb(evalBeforeForMover)
+    const wpAfter  = cpToWinProb(evalAfterForMover)
+    const wpLoss   = Math.max(0, wpBefore - wpAfter)
+
+    // Centipawn loss (always ≥ 0). Converts pawn diff → centipawns.
+    const cpLoss = Math.max(0, (evalBeforeForMover - evalAfterForMover) * 100)
+
+    const cls = classifyByCpLoss(cpLoss)
+    const bestSan = before.bestMove ? uciToSan(fenBefore, before.bestMove) : undefined
+    const comment = commentFor(cls, move.san, bestSan, cpLoss)
 
     analyses.push({
       moveNumber: Math.floor(i / 2) + 1,
+      ply: i,
       san: move.san,
       color: move.color,
-      evalBefore,
-      evalAfter,
-      delta,
-      classification: classifyDelta(delta),
+      evalBefore: before.score,
+      evalAfter: after.score,
+      delta: wpLoss,
+      cpLoss,
+      classification: cls,
+      bestMoveSan: bestSan,
+      comment,
     })
 
     onProgress?.(i + 1, history.length)
   }
 
-  // Aggregate
+  // ─── Aggregate stats ────────────────────────────────────────────────────
   const stats = {
     whiteBlunders: 0, whiteMistakes: 0, whiteInaccuracies: 0,
     blackBlunders: 0, blackMistakes: 0, blackInaccuracies: 0,
   }
-  let whiteSum = 0, whiteCount = 0
-  let blackSum = 0, blackCount = 0
+  let whiteAccSum = 0, whiteAccCount = 0, whiteCpLossSum = 0
+  let blackAccSum = 0, blackAccCount = 0, blackCpLossSum = 0
 
-  analyses.forEach((a) => {
+  for (const a of analyses) {
     const isWhite = a.color === 'w'
     if (a.classification === 'blunder') {
       isWhite ? stats.whiteBlunders++ : stats.blackBlunders++
@@ -90,44 +180,84 @@ export async function analyzeGame(
     } else if (a.classification === 'inaccuracy') {
       isWhite ? stats.whiteInaccuracies++ : stats.blackInaccuracies++
     }
-    // accuracy ~ how close to "best" each move was
-    const acc = Math.max(0, 100 + a.delta * 25) // delta=0 → 100, delta=-2 → 50
-    if (isWhite) { whiteSum += Math.min(100, acc); whiteCount++ }
-    else { blackSum += Math.min(100, acc); blackCount++ }
-  })
+    const acc = moveAccuracy(a.delta)
+    if (isWhite) {
+      whiteAccSum += acc; whiteAccCount++; whiteCpLossSum += a.cpLoss
+    } else {
+      blackAccSum += acc; blackAccCount++; blackCpLossSum += a.cpLoss
+    }
+  }
 
-  const whiteAccuracy = whiteCount > 0 ? Math.round(whiteSum / whiteCount) : 0
-  const blackAccuracy = blackCount > 0 ? Math.round(blackSum / blackCount) : 0
+  const whiteAccuracy = whiteAccCount > 0 ? Math.round(whiteAccSum / whiteAccCount) : 0
+  const blackAccuracy = blackAccCount > 0 ? Math.round(blackAccSum / blackAccCount) : 0
+  const whiteAcpl = whiteAccCount > 0 ? Math.round(whiteCpLossSum / whiteAccCount) : 0
+  const blackAcpl = blackAccCount > 0 ? Math.round(blackCpLossSum / blackAccCount) : 0
 
-  const summary = buildSummary(stats, whiteAccuracy, blackAccuracy)
+  // Decisive moment = single move with the largest cpLoss
+  const decisiveMoment = analyses.reduce<MoveAnalysis | null>((best, m) => {
+    if (m.classification !== 'blunder' && m.classification !== 'mistake') return best
+    if (!best || m.cpLoss > best.cpLoss) return m
+    return best
+  }, null)
+
+  const verdict = buildVerdict(
+    stats, whiteAccuracy, blackAccuracy, whiteAcpl, blackAcpl, decisiveMoment,
+  )
 
   return {
     totalMoves: history.length,
     ...stats,
     whiteAccuracy,
     blackAccuracy,
+    whiteAcpl,
+    blackAcpl,
+    decisiveMoment,
+    verdict,
     moves: analyses,
-    summary,
   }
 }
 
-function buildSummary(
+// ─── Verdict builder ───────────────────────────────────────────────────────
+function buildVerdict(
   s: { whiteBlunders: number; whiteMistakes: number; blackBlunders: number; blackMistakes: number },
-  wAcc: number,
-  bAcc: number,
+  wAcc: number, bAcc: number,
+  wAcpl: number, bAcpl: number,
+  decisive: MoveAnalysis | null,
 ): string {
   const parts: string[] = []
-  parts.push(`White accuracy: ${wAcc}% • Black accuracy: ${bAcc}%.`)
-  if (s.whiteBlunders + s.blackBlunders === 0) {
-    parts.push('No major blunders — well played by both sides.')
-  } else {
-    if (s.whiteBlunders > s.blackBlunders) {
-      parts.push(`White lost the game with ${s.whiteBlunders} blunder${s.whiteBlunders > 1 ? 's' : ''}.`)
-    } else if (s.blackBlunders > s.whiteBlunders) {
-      parts.push(`Black blundered ${s.blackBlunders} time${s.blackBlunders > 1 ? 's' : ''} — costly mistakes.`)
+
+  // Headline accuracy line
+  parts.push(`White ${wAcc}% accuracy (ACPL ${wAcpl}), Black ${bAcc}% accuracy (ACPL ${bAcpl}).`)
+
+  // Decisive moment in plain language — this is the main "judgement"
+  if (decisive) {
+    const side = decisive.color === 'w' ? 'White' : 'Black'
+    const num = decisive.color === 'w'
+      ? `${decisive.moveNumber}.`
+      : `${decisive.moveNumber}…`
+    if (decisive.bestMoveSan && decisive.bestMoveSan !== decisive.san) {
+      parts.push(
+        `The decisive moment was ${num} ${decisive.san} — ${side} should have played ${decisive.bestMoveSan} instead, losing ~${(decisive.cpLoss / 100).toFixed(1)} pawns of evaluation here.`,
+      )
     } else {
-      parts.push(`Both sides had ${s.whiteBlunders} blunder${s.whiteBlunders > 1 ? 's' : ''}.`)
+      parts.push(
+        `The decisive moment was ${num} ${decisive.san} (${side}) — losing ~${(decisive.cpLoss / 100).toFixed(1)} pawns.`,
+      )
     }
+  } else if (s.whiteBlunders + s.blackBlunders + s.whiteMistakes + s.blackMistakes === 0) {
+    parts.push('No real mistakes from either side — a clean, well-played game.')
+  } else {
+    parts.push('Both sides held the position well — no single move decided the game.')
   }
+
+  // Side comparison — short and honest
+  if (wAcpl < bAcpl - 30) {
+    parts.push('Overall White played more accurately.')
+  } else if (bAcpl < wAcpl - 30) {
+    parts.push('Overall Black played more accurately.')
+  } else if (wAcpl < 30 && bAcpl < 30) {
+    parts.push('Both sides played at a strong, near-engine level.')
+  }
+
   return parts.join(' ')
 }
