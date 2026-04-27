@@ -62,6 +62,7 @@ interface GameStore {
   // Multiplayer
   mpRoomId: string | null
   mpRoomLink: string | null
+  mpRoomFen: string | null
   mpRole: 'white' | 'black' | 'spectator' | null
   mpReadOnly: boolean
   mpAwaitingHostStart: boolean
@@ -178,6 +179,7 @@ function applyRoomSnapshot(set: (partial: Partial<GameStore>) => void, room: Roo
     gameStatus: computeGameStatus(chess),
     hintSquare: null,
     hintToSquare: null,
+    mpRoomFen: room.fen,
   })
 }
 
@@ -339,6 +341,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     mpRoomId: null,
     mpRoomLink: null,
+    mpRoomFen: null,
     mpRole: null,
     mpReadOnly: false,
     mpAwaitingHostStart: false,
@@ -397,15 +400,107 @@ export const useGameStore = create<GameStore>((set, get) => {
     selectSquare(square: string) {
       const {
         chess, selectedSquare, gameMode, playerColor, gameStatus, difficulty,
-        mpStatus, mpRoomId, mpReadOnly,
+        mpStatus, mpRoomId, mpReadOnly, mpRoomFen,
       } = get()
       if (gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw') return
 
-      const turn = chess.turn()
-      if (gameMode === 'multiplayer') {
-        console.log('TURN:', chess.turn())
+      if (gameMode === 'multiplayer' && mpRoomId) {
+        if (!mpRoomFen) {
+          set({ mpError: 'room not loaded' })
+          console.log('move blocked', 'room not loaded')
+          return
+        }
+        if (mpReadOnly) {
+          set({ mpError: 'spectator' })
+          console.log('move blocked', 'spectator')
+          return
+        }
+        if (mpStatus === 'joining' || mpStatus === 'error' || mpStatus === 'idle') {
+          set({ mpError: 'room not loaded' })
+          console.log('move blocked', 'room not loaded')
+          return
+        }
+
+        const roomChess = new Chess(mpRoomFen)
+        const turn = roomChess.turn()
+        console.log('TURN:', turn)
         console.log('PLAYER:', roleFromColor(playerColor))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const piece = roomChess.get(square as any)
+
+        if (selectedSquare) {
+          if (selectedSquare === square) {
+            set({ selectedSquare: null, legalMoveSquares: [], hintSquare: null, hintToSquare: null, mpError: null })
+            return
+          }
+
+          if (needsPromotion(roomChess, selectedSquare, square)) {
+            if (!canCurrentPlayerMove(playerColor, turn)) {
+              set({ mpError: 'not your turn' })
+              console.log('move blocked', 'not your turn')
+              return
+            }
+            set({ promotionPending: { from: selectedSquare, to: square }, selectedSquare: null, legalMoveSquares: [] })
+            return
+          }
+
+          if (!canCurrentPlayerMove(playerColor, turn)) {
+            set({ mpError: 'not your turn' })
+            console.log('move blocked', 'not your turn')
+            return
+          }
+
+          const next = new Chess(mpRoomFen)
+          console.log('attempt move', { playerColor: roleFromColor(playerColor), roomFen: mpRoomFen, turn: next.turn(), from: selectedSquare, to: square })
+          const moveResult = next.move({ from: selectedSquare, to: square })
+          console.log('move result', moveResult)
+          if (!moveResult) {
+            set({ mpError: 'illegal move' })
+            console.log('move blocked', 'illegal move')
+            return
+          }
+
+          set({ mpStatus: 'hosting' })
+          console.log('updating supabase after move')
+          updateRoomState(mpRoomId, {
+            fen: next.fen(),
+            pgn: next.pgn(),
+            turn: next.turn(),
+            updated_at: new Date().toISOString(),
+          })
+            .then((room) => {
+              console.log('supabase update result', null)
+              applyRoomSnapshot(set, room)
+              set({ mpStatus: 'connected', lastMove: { from: selectedSquare, to: square }, mpError: null })
+            })
+            .catch((e: Error) => {
+              console.log('supabase update result', e.message)
+              set({ mpStatus: 'error', mpError: `Supabase update failed: ${e.message}` })
+            })
+          return
+        }
+
+        if (piece && piece.color === turn) {
+          if (piece.color !== playerColor) {
+            set({ mpError: 'You can move only your color' })
+            return
+          }
+          if (!canCurrentPlayerMove(playerColor, turn)) {
+            set({ mpError: 'not your turn' })
+            console.log('move blocked', 'not your turn')
+            return
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const moves = roomChess.moves({ square: square as any, verbose: true })
+          set({ selectedSquare: square, legalMoveSquares: moves.map(m => m.to), mpError: null })
+          return
+        }
+
+        set({ selectedSquare: null, legalMoveSquares: [] })
+        return
       }
+
+      const turn = chess.turn()
       if (gameMode === 'vs-ai' && turn !== playerColor) return
       if (gameMode === 'multiplayer' && mpReadOnly) return
       if (gameMode === 'multiplayer' && (mpStatus === 'joining' || mpStatus === 'error' || mpStatus === 'idle')) return
@@ -523,16 +618,40 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     completePromotion(piece: string) {
-      const { chess, promotionPending, gameMode, difficulty, mpRoomId, playerColor } = get()
+      const { chess, promotionPending, gameMode, difficulty, mpRoomId, playerColor, mpRoomFen, mpReadOnly } = get()
       if (!promotionPending) return
 
       if (gameMode === 'multiplayer' && mpRoomId) {
-        if (!canCurrentPlayerMove(playerColor, chess.turn())) {
-          set({ mpError: 'Not your turn', promotionPending: null })
+        if (mpReadOnly) {
+          set({ mpError: 'spectator', promotionPending: null })
+          console.log('move blocked', 'spectator')
           return
         }
-        const next = new Chess(chess.fen())
-        next.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
+        if (!mpRoomFen) {
+          set({ mpError: 'room not loaded', promotionPending: null })
+          console.log('move blocked', 'room not loaded')
+          return
+        }
+        const next = new Chess(mpRoomFen)
+        if (!canCurrentPlayerMove(playerColor, next.turn())) {
+          set({ mpError: 'not your turn', promotionPending: null })
+          console.log('move blocked', 'not your turn')
+          return
+        }
+        console.log('attempt move', {
+          playerColor: roleFromColor(playerColor),
+          roomFen: mpRoomFen,
+          turn: next.turn(),
+          from: promotionPending.from,
+          to: promotionPending.to,
+        })
+        const promotionMove = next.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
+        console.log('move result', promotionMove)
+        if (!promotionMove) {
+          set({ mpError: 'illegal move', promotionPending: null })
+          console.log('move blocked', 'illegal move')
+          return
+        }
         set({ mpStatus: 'hosting', promotionPending: null })
         console.log('updating supabase after move')
         updateRoomState(mpRoomId, {
@@ -542,10 +661,14 @@ export const useGameStore = create<GameStore>((set, get) => {
           updated_at: new Date().toISOString(),
         })
           .then((room) => {
+            console.log('supabase update result', null)
             applyRoomSnapshot(set, room)
-            set({ mpStatus: 'connected', lastMove: { from: promotionPending.from, to: promotionPending.to } })
+            set({ mpStatus: 'connected', lastMove: { from: promotionPending.from, to: promotionPending.to }, mpError: null })
           })
-          .catch((e: Error) => set({ mpStatus: 'error', mpError: e.message }))
+          .catch((e: Error) => {
+            console.log('supabase update result', e.message)
+            set({ mpStatus: 'error', mpError: `Supabase update failed: ${e.message}` })
+          })
       } else if (gameMode === 'multiplayer') {
         chess.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
         const newStatus = computeGameStatus(chess)
@@ -916,6 +1039,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         mpStatus: 'idle',
         mpRoomId: null,
         mpRoomLink: null,
+        mpRoomFen: null,
         mpRole: null,
         mpReadOnly: false,
         mpAwaitingHostStart: false,
