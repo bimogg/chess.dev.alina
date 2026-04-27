@@ -106,11 +106,23 @@ export function GameOverModal() {
         <div className="game-over-actions">
           <button
             className="btn-start-match"
-            onClick={() => { closeGameOver(); runCoachAnalysis() }}
-            disabled={coachAnalyzing || movesPlayed === 0}
-            style={{ marginBottom: 10 }}
+            onClick={() => {
+              if (movesPlayed === 0) {
+                console.warn('[Coach] No moves to analyze in this game')
+                return
+              }
+              closeGameOver()
+              runCoachAnalysis()
+            }}
+            disabled={coachAnalyzing}
+            style={{ marginBottom: 10, opacity: movesPlayed === 0 ? 0.55 : 1 }}
+            title={movesPlayed === 0 ? 'No moves recorded for this game' : 'Run Stockfish analysis'}
           >
-            🧠 Разобрать партию (AI Coach)
+            {coachAnalyzing
+              ? '🧠 Анализирую…'
+              : movesPlayed === 0
+                ? '🧠 Нет ходов для разбора'
+                : '🧠 Разобрать партию (AI Coach)'}
           </button>
           <div style={{ display: 'flex', gap: 10 }}>
             <button

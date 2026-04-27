@@ -178,7 +178,22 @@ function isHostedByCurrentClient(roomId: string, clientId: string): boolean {
 }
 
 function applyRoomSnapshot(set: (partial: Partial<GameStore>) => void, room: RoomRow) {
-  const chess = new Chess(room.fen)
+  // IMPORTANT: prefer loadPgn over loading FEN — `new Chess(fen)` produces
+  // an instance whose `.history()` is empty, which breaks move-count display
+  // and AI Coach analysis. PGN preserves the full move history.
+  const chess = new Chess()
+  let loaded = false
+  if (room.pgn && room.pgn.trim().length > 0) {
+    try {
+      chess.loadPgn(room.pgn)
+      loaded = true
+    } catch {
+      loaded = false
+    }
+  }
+  if (!loaded) {
+    try { chess.load(room.fen) } catch { /* ignore */ }
+  }
   set({
     chess,
     selectedSquare: null,
