@@ -652,7 +652,21 @@ export const useGameStore = create<GameStore>((set, get) => {
           console.log('move blocked', 'illegal move')
           return
         }
-        set({ mpStatus: 'hosting', promotionPending: null })
+        // Optimistically apply promotion locally so the user sees immediate result.
+        set({
+          chess: next,
+          selectedSquare: null,
+          legalMoveSquares: [],
+          promotionPending: null,
+          capturedPieces: computeCapturedPieces(next),
+          gameStatus: computeGameStatus(next),
+          hintSquare: null,
+          hintToSquare: null,
+          mpRoomFen: next.fen(),
+          mpStatus: 'hosting',
+          lastMove: { from: promotionPending.from, to: promotionPending.to },
+          mpError: null,
+        })
         console.log('updating supabase after move')
         updateRoomState(mpRoomId, {
           fen: next.fen(),

@@ -8,7 +8,7 @@ const PIECES = [
 ]
 
 export function PromotionModal() {
-  const { promotionPending, completePromotion } = useGameStore()
+  const { promotionPending, completePromotion, mpStatus, mpError } = useGameStore()
   if (!promotionPending) return null
 
   return (
@@ -21,6 +21,7 @@ export function PromotionModal() {
             <button
               key={p.type}
               className="promotion-piece-btn"
+              disabled={mpStatus === 'hosting'}
               onClick={() => completePromotion(p.type)}
             >
               <span className="promotion-piece-icon">{p.symbol}</span>
@@ -28,6 +29,8 @@ export function PromotionModal() {
             </button>
           ))}
         </div>
+        {mpStatus === 'hosting' && <div className="promotion-subtitle">Applying move...</div>}
+        {mpError && <div className="promotion-subtitle" style={{ color: '#ff6b6b' }}>{mpError}</div>}
       </div>
     </div>
   )
