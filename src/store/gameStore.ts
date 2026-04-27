@@ -1120,17 +1120,69 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     // ─── AI Coach ─────────────────────────────────────
     async runCoachAnalysis() {
-      const { chess } = get()
-      if (chess.history().length === 0) return
-      set({ coachAnalyzing: true, coachReport: null, coachProgress: { current: 0, total: chess.history().length } })
+      const state = get()
+      const localHistory = state.chess.history()
+      const localPgn = state.chess.pgn()
+      console.log('[Coach] Click → runCoachAnalysis. local history.length =', localHistory.length, 'pgn =', JSON.stringify(localPgn))
+
+      // If local chess has no history (multiplayer rebuilds from FEN can lose
+      // history), try to recover by reading PGN from the current Chess instance,
+      // OR from the multiplayer room snapshot.
+      let pgn = localPgn
+
+      if (localHistory.length === 0 && state.gameMode === 'multiplayer' && state.mpRoomFen) {
+        // Try to find PGN we may have stashed on the chess instance via supabase mirror
+        // (mpRoomFen is just a position snapshot — it has no move list, so we can't
+        // recover history from it alone).
+        console.warn('[Coach] No local history in multiplayer. The opponent may have stored an empty PGN. Aborting with visible error.')
+      }
+
+      if (!pgn || pgn.trim().length === 0) {
+        // No moves to analyze at all — surface a visible message in the modal
+        // by setting a faux "report" with a clear verdict.
+        console.warn('[Coach] No PGN to analyze — surfacing modal with empty-game notice.')
+        set({
+          coachAnalyzing: false,
+          coachProgress: null,
+          coachReport: {
+            totalMoves: 0,
+            whiteBlunders: 0, whiteMistakes: 0, whiteInaccuracies: 0,
+            blackBlunders: 0, blackMistakes: 0, blackInaccuracies: 0,
+            whiteAccuracy: 0, blackAccuracy: 0,
+            whiteAcpl: 0, blackAcpl: 0,
+            decisiveMoment: null,
+            verdict: 'No moves recorded for this game — nothing to analyze. (Multiplayer rooms only persist the position snapshot, not full history, if started mid-game.)',
+            moves: [],
+          },
+        })
+        return
+      }
+
+      console.log('[Coach] Starting analysis for PGN of length', pgn.length)
+      set({ coachAnalyzing: true, coachReport: null, coachProgress: { current: 0, total: localHistory.length || 1 } })
       try {
-        const report = await analyzeGame(chess.pgn(), (cur, total) => {
+        const report = await analyzeGame(pgn, (cur, total) => {
+          console.log(`[Coach] Progress ${cur}/${total}`)
           set({ coachProgress: { current: cur, total } })
         })
+        console.log('[Coach] Analysis complete', report)
         set({ coachReport: report, coachAnalyzing: false, coachProgress: null })
       } catch (e) {
-        console.error('[Coach]', e)
-        set({ coachAnalyzing: false, coachProgress: null })
+        console.error('[Coach] Analysis failed:', e)
+        set({
+          coachAnalyzing: false,
+          coachProgress: null,
+          coachReport: {
+            totalMoves: localHistory.length,
+            whiteBlunders: 0, whiteMistakes: 0, whiteInaccuracies: 0,
+            blackBlunders: 0, blackMistakes: 0, blackInaccuracies: 0,
+            whiteAccuracy: 0, blackAccuracy: 0,
+            whiteAcpl: 0, blackAcpl: 0,
+            decisiveMoment: null,
+            verdict: `Analysis failed: ${(e as Error).message}. The Stockfish engine may not have loaded — try refreshing the page.`,
+            moves: [],
+          },
+        })
       }
     },
     closeCoachReport() { set({ coachReport: null }) },

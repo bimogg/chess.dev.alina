@@ -107,26 +107,28 @@ export async function analyzeGame(
 ): Promise<CoachReport> {
   const chess = new Chess()
   chess.loadPgn(pgn)
-  const history = chess.history({ verbose: true })
+  // chess.js v1+ already attaches `before` and `after` FEN to each verbose
+  // move — use those directly instead of replaying from a starting position.
+  // This is correct even when the PGN starts from a custom FEN (Chess960 /
+  // mid-game positions saved by the multiplayer flow).
+  const history = chess.history({ verbose: true }) as Array<{
+    color: 'w' | 'b'
+    san: string
+    before: string
+    after: string
+  }>
 
-  // We replay from the start and analyze each ply at depth 14.
-  // For every move played we also compare against Stockfish's best move
-  // FROM THE PRE-MOVE POSITION — that's the "you should have played X" alt.
-  const replay = new Chess()
   const analyses: MoveAnalysis[] = []
 
   for (let i = 0; i < history.length; i++) {
     const move = history[i]
-    const fenBefore = replay.fen()
+    const fenBefore = move.before
+    const fenAfter = move.after
 
-    // Analyze the position BEFORE the move — gives us:
-    //   • the best move the engine sees here (alt for the user)
-    //   • the eval of the position the user is about to move in
+    // Analyze the position BEFORE the move — gives the best move the engine
+    // sees here (the alternative we'll suggest to the user) and the eval.
     const before = await analyzePosition(fenBefore, 14)
-
-    // Make the move and analyze the resulting position
-    replay.move(move)
-    const fenAfter = replay.fen()
+    // Analyze the position AFTER — gives the eval the move actually produced.
     const after = await analyzePosition(fenAfter, 14)
 
     // Express both evals from the MOVING side's perspective

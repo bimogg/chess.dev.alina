@@ -160,8 +160,13 @@ export function Sidebar() {
         )}
         <button
           className="btn btn-primary btn-sm btn-full"
-          onClick={runCoachAnalysis}
-          disabled={history.length === 0 || coachAnalyzing}
+          onClick={() => {
+            console.log('[Sidebar] Analyze button clicked. history.length =', history.length)
+            runCoachAnalysis()
+          }}
+          disabled={coachAnalyzing}
+          style={{ opacity: history.length === 0 ? 0.7 : 1 }}
+          title={history.length === 0 ? 'No moves recorded yet' : 'Run Stockfish analysis on this game'}
         >
           {coachAnalyzing ? '🧠 Analyzing…' : '🧠 Analyze with AI Coach'}
         </button>
