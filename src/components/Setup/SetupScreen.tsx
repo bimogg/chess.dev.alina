@@ -29,6 +29,7 @@ export function SetupScreen() {
   const {
     goToLanding, startGame, goToMultiplayerLobby,
     pieceSkin: storeSkin, ownedSkins, openProUpgrade, openSkinsShop,
+    profile, openAuthModal,
   } = useGameStore()
 
   const [mode, setMode] = useState<GameMode>('local')
@@ -39,6 +40,10 @@ export function SetupScreen() {
   const [skin, setSkin] = useState<PieceSkin>(storeSkin)
 
   const handleStart = () => {
+    if (!profile?.username?.trim()) {
+      openAuthModal()
+      return
+    }
     if (mode === 'multiplayer') {
       goToMultiplayerLobby()
       return

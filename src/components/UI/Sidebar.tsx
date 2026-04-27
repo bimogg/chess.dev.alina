@@ -10,7 +10,7 @@ export function Sidebar() {
     saveCurrentGame, undoMove,
     requestHint, clearHint, hintSquare, hintToSquare,
     runCoachAnalysis, coachAnalyzing,
-    leaveMultiplayer, mpRole, mpRoomLink, mpAwaitingHostStart,
+    leaveMultiplayer, mpRole, mpRoomLink, mpAwaitingHostStart, mpWhiteName, mpBlackName,
   } = useGameStore()
 
   const [copied, setCopied] = useState(false)
@@ -62,6 +62,13 @@ export function Sidebar() {
   if (isSpectator) sideLine = 'Вы наблюдатель'
   else if (myColor === 'w') sideLine = 'Вы играете за белых ♔'
   else if (myColor === 'b') sideLine = 'Вы играете за чёрных ♚'
+  let opponentLine: string | null = null
+  if (gameMode === 'multiplayer') {
+    if (mpRole === 'white') opponentLine = `Соперник: ${mpBlackName ?? 'ожидаем...'}`
+    else if (mpRole === 'black') opponentLine = `Соперник: ${mpWhiteName ?? 'ожидаем...'}`
+    else opponentLine = `Белые: ${mpWhiteName ?? 'Игрок'} · Чёрные: ${mpBlackName ?? 'ожидаем...'}`
+  }
+
   // local mode: no side line — both players use the same screen
 
   // ─── Turn line ─────────────────────────────────────────────────────────
@@ -129,6 +136,9 @@ export function Sidebar() {
 
           {sideLine && (
             <div className="status-hero-side">{sideLine}</div>
+          )}
+          {opponentLine && (
+            <div className="status-hero-side">{opponentLine}</div>
           )}
 
           <div className={`status-hero-turn ${isMyTurn ? 'status-hero-turn--mine' : ''}`}>

@@ -6,7 +6,7 @@ export function MultiplayerLobby() {
   const {
     goToLanding, startHostedMultiplayer,
     hostMultiplayer, joinMultiplayer, leaveMultiplayer,
-    mpStatus, mpRoomId, mpRoomLink, mpRole, mpAwaitingHostStart, mpError,
+    mpStatus, mpRoomId, mpRoomLink, mpRole, mpAwaitingHostStart, mpError, profile, openAuthModal,
   } = useGameStore()
 
   const [tab, setTab] = useState<'host' | 'join'>('host')
@@ -30,6 +30,10 @@ export function MultiplayerLobby() {
   }
 
   const handleJoin = () => {
+    if (!profile?.username?.trim()) {
+      openAuthModal()
+      return
+    }
     const cleaned = roomInput.trim()
     if (!cleaned) return
     // Accept both bare room id and full URL
@@ -65,7 +69,13 @@ export function MultiplayerLobby() {
             </p>
             <button
               className="mp-host-action"
-              onClick={hostMultiplayer}
+              onClick={() => {
+                if (!profile?.username?.trim()) {
+                  openAuthModal()
+                  return
+                }
+                hostMultiplayer()
+              }}
               disabled={mpStatus === 'hosting' || (mpAwaitingHostStart && mpRole === 'white')}
             >
               {mpStatus === 'hosting' && !mpRoomLink ? 'Creating room…' : 'Create Room'}

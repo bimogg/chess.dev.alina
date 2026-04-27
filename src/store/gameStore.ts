@@ -63,6 +63,8 @@ interface GameStore {
   mpRoomId: string | null
   mpRoomLink: string | null
   mpRoomFen: string | null
+  mpWhiteName: string | null
+  mpBlackName: string | null
   mpRole: 'white' | 'black' | 'spectator' | null
   mpReadOnly: boolean
   mpAwaitingHostStart: boolean
@@ -157,13 +159,52 @@ function applyAppTheme(t: AppTheme) {
 
 let roomChannel: RealtimeChannel | null = null
 
+function nicknameFromState(state: GameStore): string {
+  const fromProfile = state.profile?.username?.trim()
+  if (fromProfile) return fromProfile
+  if (typeof window !== 'undefined') {
+    const saved = window.localStorage.getItem('cv_player_nick')?.trim()
+    if (saved) return saved
+  }
+  return 'Player'
+}
+
+function encodeNicknameForId(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 24)
+  return slug || 'player'
+}
+
+function decodeNicknameFromId(playerId: string | null | undefined): string | null {
+  if (!playerId) return null
+  if (playerId.startsWith('guest__')) {
+    const parts = playerId.split('__')
+    if (parts.length >= 3) {
+      const encoded = parts[1]
+      return encoded
+        .split('-')
+        .filter(Boolean)
+        .map((part) => part[0]?.toUpperCase() + part.slice(1))
+        .join(' ')
+    }
+  }
+  return null
+}
+
 function getMultiplayerIdentity(state: GameStore): string {
   void state
   const key = 'cv_mp_guest_id'
   const existing = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null
   if (existing) return existing
-  const generated = `guest-${Math.random().toString(36).slice(2, 10)}`
-  if (typeof window !== 'undefined') window.localStorage.setItem(key, generated)
+  const nick = encodeNicknameForId(nicknameFromState(state))
+  const generated = `guest__${nick}__${Math.random().toString(36).slice(2, 10)}`
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(key, generated)
+    window.localStorage.setItem('cv_player_nick', nicknameFromState(state))
+  }
   return generated
 }
 
@@ -386,6 +427,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     mpRoomId: null,
     mpRoomLink: null,
     mpRoomFen: null,
+    mpWhiteName: null,
+    mpBlackName: null,
     mpRole: null,
     mpReadOnly: false,
     mpAwaitingHostStart: false,
@@ -999,6 +1042,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         isPro: get().isPro,
       }
       localSaveProfile(profile)
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('cv_player_nick', username)
+      }
       set({ profile, showAuthModal: false })
     },
 
@@ -1014,6 +1060,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       try {
         unsubscribeRoom(roomChannel)
         const me = getMultiplayerIdentity(get())
+        const myName = nicknameFromState(get())
         console.log('clientId', me)
         const roomId = crypto.randomUUID()
         const chess = new Chess()
@@ -1031,7 +1078,11 @@ export const useGameStore = create<GameStore>((set, get) => {
         roomChannel = subscribeRoomUpdates(roomId, (nextRoom) => {
           console.log('received realtime update', nextRoom)
           applyRoomSnapshot(set, nextRoom)
-          set({ mpStatus: 'connected' })
+          set({
+            mpStatus: 'connected',
+            mpWhiteName: nextRoom.white_player === me ? myName : decodeNicknameFromId(nextRoom.white_player) ?? 'Игрок',
+            mpBlackName: nextRoom.black_player === me ? myName : decodeNicknameFromId(nextRoom.black_player) ?? (nextRoom.black_player ? 'Игрок' : null),
+          })
         })
         set({
           mpStatus: 'connected',
@@ -1043,6 +1094,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           mpAwaitingHostStart: true,
           mpRoomId: roomId,
           mpRoomLink: getRoomLink(roomId),
+          mpWhiteName: myName,
+          mpBlackName: null,
           selectedSquare: null,
           legalMoveSquares: [],
           capturedPieces: computeCapturedPieces(chess),
@@ -1082,6 +1135,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       try {
         unsubscribeRoom(roomChannel)
         const me = getMultiplayerIdentity(get())
+        const myName = nicknameFromState(get())
         console.log('clientId', me)
         let room = await getRoom(roomId)
         if (!room) throw new Error('Room not found')
@@ -1110,7 +1164,11 @@ export const useGameStore = create<GameStore>((set, get) => {
         roomChannel = subscribeRoomUpdates(roomId, (nextRoom) => {
           console.log('received realtime update', nextRoom)
           applyRoomSnapshot(set, nextRoom)
-          set({ mpStatus: 'connected' })
+          set({
+            mpStatus: 'connected',
+            mpWhiteName: nextRoom.white_player === me ? myName : decodeNicknameFromId(nextRoom.white_player) ?? 'Игрок',
+            mpBlackName: nextRoom.black_player === me ? myName : decodeNicknameFromId(nextRoom.black_player) ?? (nextRoom.black_player ? 'Игрок' : null),
+          })
         })
         set({
           mpStatus: 'connected',
@@ -1122,6 +1180,8 @@ export const useGameStore = create<GameStore>((set, get) => {
           mpAwaitingHostStart: false,
           mpRoomId: roomId,
           mpRoomLink: getRoomLink(roomId),
+          mpWhiteName: room.white_player === me ? myName : decodeNicknameFromId(room.white_player) ?? 'Игрок',
+          mpBlackName: room.black_player === me ? myName : decodeNicknameFromId(room.black_player) ?? (room.black_player ? 'Игрок' : null),
           gameStartedAt: Date.now(),    // joiner's clock starts now
           gameEndedAt: null,
           showGameOver: false,
@@ -1139,6 +1199,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         mpRoomId: null,
         mpRoomLink: null,
         mpRoomFen: null,
+        mpWhiteName: null,
+        mpBlackName: null,
         mpRole: null,
         mpReadOnly: false,
         mpAwaitingHostStart: false,
