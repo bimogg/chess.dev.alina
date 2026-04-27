@@ -53,6 +53,15 @@ function pickPrimary(files) {
   return files.find((f) => f.endsWith('.js')) ?? null
 }
 
+function pickWasmFor(primaryJs, files) {
+  if (!primaryJs) return null
+  // Typical pair: stockfish-18-lite-single.js -> stockfish-18-lite-single.wasm
+  const sameStem = primaryJs.replace(/\.js$/, '.wasm')
+  if (files.includes(sameStem)) return sameStem
+  // Fallback to any wasm in copied set.
+  return files.find((f) => f.endsWith('.wasm')) ?? null
+}
+
 function copyAll() {
   ensureDir(OUT)
 
@@ -93,6 +102,14 @@ self.importScripts('./${primary}');
       console.log(`[copy-stockfish] /stockfish/stockfish.js → loads ${primary}`)
     } else {
       console.log('[copy-stockfish] /stockfish/stockfish.js ready')
+    }
+
+    // Most stockfish js builds look up "stockfish.wasm" by default.
+    // Provide a stable alias so runtime wasm lookup never 404s.
+    const primaryWasm = pickWasmFor(primary, toCopy)
+    if (primaryWasm && primaryWasm !== 'stockfish.wasm') {
+      copyFileSync(join(SRC, primaryWasm), join(OUT, 'stockfish.wasm'))
+      console.log(`[copy-stockfish] /stockfish/stockfish.wasm -> copied from ${primaryWasm}`)
     }
   } else {
     console.warn('[copy-stockfish] No suitable Stockfish .js found — installing fallback')
