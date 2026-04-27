@@ -686,13 +686,40 @@ function handleMpMessage(
   get: () => GameStore,
 ) {
   if (msg.type === 'move') {
+    // Use sender PGN as the source of truth to avoid desync.
+    // Incremental move-apply can fail silently if peers diverge by one ply.
+    const next = new Chess()
+    try {
+      next.loadPgn(msg.pgn)
+      set({
+        chess: next,
+        selectedSquare: null,
+        legalMoveSquares: [],
+        promotionPending: null,
+        capturedPieces: computeCapturedPieces(next),
+        gameStatus: computeGameStatus(next),
+        lastMove: { from: msg.from, to: msg.to },
+        hintSquare: null,
+        hintToSquare: null,
+      })
+      saveCurrentFen(next.pgn())
+      return
+    } catch {
+      // Fallback for backward compatibility with any old payloads.
+    }
+
     const { chess } = get()
     try {
       chess.move({ from: msg.from, to: msg.to, promotion: msg.promotion })
       set({
+        selectedSquare: null,
+        legalMoveSquares: [],
+        promotionPending: null,
         capturedPieces: computeCapturedPieces(chess),
         gameStatus: computeGameStatus(chess),
         lastMove: { from: msg.from, to: msg.to },
+        hintSquare: null,
+        hintToSquare: null,
       })
       saveCurrentFen(chess.pgn())
     } catch { /* ignore */ }
