@@ -64,6 +64,7 @@ interface GameStore {
   mpRoomLink: string | null
   mpRole: 'white' | 'black' | 'spectator' | null
   mpReadOnly: boolean
+  mpAwaitingHostStart: boolean
   mpStatus: 'idle' | 'hosting' | 'joining' | 'connected' | 'error'
   mpError: string | null
 
@@ -122,6 +123,7 @@ interface GameStore {
 
   // ─── Multiplayer ──────────────────────────────────────
   hostMultiplayer: () => Promise<void>
+  startHostedMultiplayer: () => void
   joinMultiplayer: (roomId: string) => Promise<void>
   leaveMultiplayer: () => void
 
@@ -339,6 +341,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     mpRoomLink: null,
     mpRole: null,
     mpReadOnly: false,
+    mpAwaitingHostStart: false,
     mpStatus: 'idle',
     mpError: null,
 
@@ -819,11 +822,12 @@ export const useGameStore = create<GameStore>((set, get) => {
         })
         set({
           mpStatus: 'connected',
-          screen: 'game',
+          screen: 'multiplayer-lobby',
           gameMode: 'multiplayer',
           playerColor: 'w',
           mpRole: 'white',
           mpReadOnly: false,
+          mpAwaitingHostStart: true,
           mpRoomId: roomId,
           mpRoomLink: getRoomLink(roomId),
           selectedSquare: null,
@@ -835,6 +839,19 @@ export const useGameStore = create<GameStore>((set, get) => {
       } catch (e) {
         set({ mpStatus: 'error', mpError: (e as Error).message })
       }
+    },
+
+    startHostedMultiplayer() {
+      const { mpRole, mpRoomId } = get()
+      if (mpRole !== 'white' || !mpRoomId) return
+      set({
+        screen: 'game',
+        gameMode: 'multiplayer',
+        playerColor: 'w',
+        mpReadOnly: false,
+        mpAwaitingHostStart: false,
+        mpStatus: 'connected',
+      })
     },
 
     async joinMultiplayer(roomId: string) {
@@ -883,6 +900,7 @@ export const useGameStore = create<GameStore>((set, get) => {
           playerColor,
           mpRole,
           mpReadOnly: readOnly,
+          mpAwaitingHostStart: false,
           mpRoomId: roomId,
           mpRoomLink: getRoomLink(roomId),
         })
@@ -900,6 +918,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         mpRoomLink: null,
         mpRole: null,
         mpReadOnly: false,
+        mpAwaitingHostStart: false,
         mpError: null,
       })
     },

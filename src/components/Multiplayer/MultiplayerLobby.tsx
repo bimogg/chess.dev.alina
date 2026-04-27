@@ -4,9 +4,9 @@ import { getRoomFromUrl } from '../../utils/multiplayer'
 
 export function MultiplayerLobby() {
   const {
-    goToLanding,
+    goToLanding, startHostedMultiplayer,
     hostMultiplayer, joinMultiplayer, leaveMultiplayer,
-    mpStatus, mpRoomLink, mpError,
+    mpStatus, mpRoomId, mpRoomLink, mpRole, mpAwaitingHostStart, mpError,
   } = useGameStore()
 
   const [tab, setTab] = useState<'host' | 'join'>('host')
@@ -22,9 +22,6 @@ export function MultiplayerLobby() {
     }
   }, [])
 
-  // Cleanup on unmount
-  useEffect(() => () => leaveMultiplayer(), [leaveMultiplayer])
-
   const handleCopy = () => {
     if (!mpRoomLink) return
     navigator.clipboard?.writeText(mpRoomLink)
@@ -39,7 +36,8 @@ export function MultiplayerLobby() {
     let room = cleaned
     try {
       const url = new URL(cleaned)
-      room = url.searchParams.get('room') ?? cleaned
+      const fromPath = url.pathname.match(/\/room\/([^/]+)/)?.[1]
+      room = fromPath ?? url.searchParams.get('room') ?? cleaned
     } catch { /* not a URL, use as-is */ }
     joinMultiplayer(room)
   }
@@ -47,11 +45,11 @@ export function MultiplayerLobby() {
   return (
     <div className="mp-lobby">
       <div className="mp-lobby-card">
-        <button className="setup-back" onClick={goToLanding}>← Back to Home</button>
+        <button className="setup-back" onClick={() => { leaveMultiplayer(); goToLanding() }}>← Back to Home</button>
 
         <div className="setup-header">
           <h2 className="setup-title">Online Match</h2>
-          <p className="setup-subtitle">Direct P2P connection — no server, no signup</p>
+          <p className="setup-subtitle">Supabase realtime room sync</p>
         </div>
 
         <div className="mp-tabs">
@@ -68,25 +66,27 @@ export function MultiplayerLobby() {
             <button
               className="mp-host-action"
               onClick={hostMultiplayer}
-              disabled={mpStatus === 'hosting' || mpStatus === 'connected'}
+              disabled={mpStatus === 'hosting' || (mpAwaitingHostStart && mpRole === 'white')}
             >
-              {mpStatus === 'hosting' && !mpRoomLink ? 'Creating room…' :
-                mpStatus === 'connected' ? 'Connected!' :
-                  mpRoomLink ? 'Room ready · Waiting for opponent' : 'Create Room'}
+              {mpStatus === 'hosting' && !mpRoomLink ? 'Creating room…' : 'Create Room'}
             </button>
 
-            {mpRoomLink && (
+            {mpRoomLink && mpAwaitingHostStart && mpRole === 'white' && (
               <div className="mp-room-share">
-                <div className="mp-room-share-label">Share this link</div>
+                <div className="mp-room-share-label">Room created</div>
+                <div className="mp-room-share-label">Room ID: {mpRoomId}</div>
                 <div className="mp-room-link">
                   <input value={mpRoomLink} readOnly onFocus={(e) => e.target.select()} />
                   <button className="mp-room-copy" onClick={handleCopy}>
-                    {copied ? '✓ Copied' : 'Copy'}
+                    {copied ? '✓ Copied' : 'Copy Link'}
                   </button>
                 </div>
                 <div className="mp-room-status">
-                  {mpStatus === 'connected' ? 'Opponent connected — game starting…' : 'Waiting for opponent to join…'}
+                  Send this link to your friend. They will join as Black.
                 </div>
+                <button className="mp-host-action" onClick={startHostedMultiplayer}>
+                  Start as White
+                </button>
               </div>
             )}
           </div>
