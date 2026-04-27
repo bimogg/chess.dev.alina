@@ -36,7 +36,8 @@ function makeRoomId(): string {
 
 export function getRoomLink(roomId: string): string {
   const url = new URL(window.location.href)
-  url.searchParams.set('room', roomId)
+  url.pathname = `/room/${roomId}`
+  url.searchParams.delete('room')
   url.hash = ''
   return url.toString()
 }
@@ -44,6 +45,8 @@ export function getRoomLink(roomId: string): string {
 export function getRoomFromUrl(): string | null {
   try {
     const url = new URL(window.location.href)
+    const pathMatch = url.pathname.match(/^\/room\/([^/]+)$/)
+    if (pathMatch?.[1]) return pathMatch[1]
     return url.searchParams.get('room')
   } catch {
     return null

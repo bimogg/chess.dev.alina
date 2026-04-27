@@ -15,14 +15,16 @@ import {
 } from '../utils/storage'
 import { getBestMove, initEngine } from '../utils/engine'
 import {
-  hostRoom, joinRoom, send as mpSend, cleanup as mpCleanup,
-  getRoomLink, MpMessage,
+  getRoomLink,
 } from '../utils/multiplayer'
 import {
   isSupabaseEnabled, getCurrentUser, getProfile as remoteGetProfile,
   upsertProfile, signOut as supaSignOut, recordGameResult,
+  createRoom, getRoom, claimBlackSeat, updateRoomState,
+  subscribeRoomUpdates, unsubscribeRoom, RoomRow,
 } from '../utils/supabase'
 import { CoachReport, analyzeGame } from '../utils/coach'
+import { RealtimeChannel } from '@supabase/supabase-js'
 
 interface GameStore {
   // Navigation
@@ -56,8 +58,10 @@ interface GameStore {
   profile: UserProfile | null
 
   // Multiplayer
+  mpRoomId: string | null
   mpRoomLink: string | null
-  mpStatus: 'idle' | 'hosting' | 'joining' | 'connected' | 'error'
+  mpRole: 'white' | 'black' | 'spectator' | null
+  mpStatus: 'idle' | 'hosting' | 'joining' | 'connected' | 'syncing' | 'error'
   mpError: string | null
 
   // AI Coach
@@ -134,6 +138,33 @@ function needsPromotion(chess: Chess, from: string, to: string): boolean {
 function applyAppTheme(t: AppTheme) {
   if (typeof document === 'undefined') return
   document.documentElement.dataset.theme = t
+}
+
+let roomChannel: RealtimeChannel | null = null
+
+function getMultiplayerIdentity(state: GameStore): string {
+  if (state.profile?.id) return state.profile.id
+  const k = 'cv_mp_guest_id'
+  const existing = typeof window !== 'undefined' ? window.localStorage.getItem(k) : null
+  if (existing) return existing
+  const generated = `guest-${Math.random().toString(36).slice(2, 10)}`
+  if (typeof window !== 'undefined') window.localStorage.setItem(k, generated)
+  return generated
+}
+
+function applyRoomSnapshot(set: (partial: Partial<GameStore>) => void, room: RoomRow) {
+  const chess = new Chess()
+  chess.load(room.fen)
+  set({
+    chess,
+    selectedSquare: null,
+    legalMoveSquares: [],
+    promotionPending: null,
+    capturedPieces: computeCapturedPieces(chess),
+    gameStatus: computeGameStatus(chess),
+    hintSquare: null,
+    hintToSquare: null,
+  })
 }
 
 async function runStockfishMove(
@@ -241,7 +272,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     isPro: isProUser(),
     profile: initialProfile,
 
+    mpRoomId: null,
     mpRoomLink: null,
+    mpRole: null,
     mpStatus: 'idle',
     mpError: null,
 
@@ -293,12 +326,14 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     // ─── Game actions ──────────────────────────────────
     selectSquare(square: string) {
-      const { chess, selectedSquare, gameMode, playerColor, gameStatus, difficulty } = get()
+      const { chess, selectedSquare, gameMode, playerColor, gameStatus, difficulty, mpStatus, mpRoomId, mpRole } = get()
       if (gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw') return
 
       const turn = chess.turn()
       if (gameMode === 'vs-ai' && turn !== playerColor) return
-      if (gameMode === 'multiplayer' && turn !== playerColor) return
+      if (gameMode === 'multiplayer' && (mpRole === 'spectator' || turn !== playerColor)) return
+      // Don't allow moves if realtime connection dropped.
+      if (gameMode === 'multiplayer' && mpStatus !== 'connected') return
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const piece = chess.get(square as any)
@@ -319,24 +354,37 @@ export const useGameStore = create<GameStore>((set, get) => {
             return
           }
 
-          chess.move({ from: selectedSquare, to: square })
-          const newStatus = computeGameStatus(chess)
-          const captured = computeCapturedPieces(chess)
-          saveCurrentFen(chess.pgn())
+          const next = new Chess(chess.fen())
+          next.move({ from: selectedSquare, to: square })
+          const newStatus = computeGameStatus(next)
 
-          set({
-            selectedSquare: null,
-            legalMoveSquares: [],
-            capturedPieces: captured,
-            gameStatus: newStatus,
-            lastMove: { from: selectedSquare, to: square },
-            hintSquare: null,
-            hintToSquare: null,
-          })
+          if (gameMode === 'multiplayer' && mpRoomId) {
+            set({ mpStatus: 'syncing' })
+            updateRoomState(mpRoomId, { fen: next.fen(), pgn: next.pgn(), turn: next.turn() })
+              .then((room) => {
+                applyRoomSnapshot(set, room)
+                set({
+                  mpStatus: 'connected',
+                  lastMove: { from: selectedSquare, to: square },
+                })
+              })
+              .catch((e: Error) => set({ mpStatus: 'error', mpError: e.message }))
+          } else {
+            chess.move({ from: selectedSquare, to: square })
+            const captured = computeCapturedPieces(chess)
+            saveCurrentFen(chess.pgn())
 
-          if (gameMode === 'multiplayer') {
-            mpSend({ type: 'move', from: selectedSquare, to: square, pgn: chess.pgn(), fen: chess.fen() })
+            set({
+              selectedSquare: null,
+              legalMoveSquares: [],
+              capturedPieces: captured,
+              gameStatus: newStatus,
+              lastMove: { from: selectedSquare, to: square },
+              hintSquare: null,
+              hintToSquare: null,
+            })
           }
+
           if (gameMode === 'vs-ai' && !chess.isGameOver()) {
             setTimeout(() => runStockfishMove(chess, difficulty, set, get), 80)
           }
@@ -365,36 +413,40 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     completePromotion(piece: string) {
-      const { chess, promotionPending, gameMode, difficulty } = get()
+      const { chess, promotionPending, gameMode, difficulty, mpRoomId } = get()
       if (!promotionPending) return
 
-      chess.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
-      const newStatus = computeGameStatus(chess)
-      const captured = computeCapturedPieces(chess)
-      saveCurrentFen(chess.pgn())
+      if (gameMode === 'multiplayer' && mpRoomId) {
+        const next = new Chess(chess.fen())
+        next.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
+        set({ mpStatus: 'syncing', promotionPending: null })
+        updateRoomState(mpRoomId, { fen: next.fen(), pgn: next.pgn(), turn: next.turn() })
+          .then((room) => {
+            applyRoomSnapshot(set, room)
+            set({
+              mpStatus: 'connected',
+              lastMove: { from: promotionPending.from, to: promotionPending.to },
+            })
+          })
+          .catch((e: Error) => set({ mpStatus: 'error', mpError: e.message }))
+      } else {
+        chess.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
+        const newStatus = computeGameStatus(chess)
+        const captured = computeCapturedPieces(chess)
+        saveCurrentFen(chess.pgn())
 
-      set({
-        promotionPending: null,
-        capturedPieces: captured,
-        gameStatus: newStatus,
-        lastMove: { from: promotionPending.from, to: promotionPending.to },
-      })
-
-      if (gameMode === 'multiplayer') {
-        mpSend({
-          type: 'move',
-          from: promotionPending.from,
-          to: promotionPending.to,
-          promotion: piece,
-          pgn: chess.pgn(),
-          fen: chess.fen(),
+        set({
+          promotionPending: null,
+          capturedPieces: captured,
+          gameStatus: newStatus,
+          lastMove: { from: promotionPending.from, to: promotionPending.to },
         })
       }
       if (gameMode === 'vs-ai' && !chess.isGameOver()) {
         setTimeout(() => runStockfishMove(chess, difficulty, set, get), 80)
       }
       if (chess.isGameOver()) {
-        void maybeRecordResult(get(), newStatus)
+        void maybeRecordResult(get(), computeGameStatus(chess))
       }
     },
 
@@ -604,59 +656,95 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     // ─── Multiplayer ──────────────────────────────────
     async hostMultiplayer() {
+      if (!isSupabaseEnabled()) {
+        set({ mpStatus: 'error', mpError: 'Supabase is not configured' })
+        return
+      }
       set({ mpStatus: 'hosting', mpError: null })
       try {
-        const roomId = await hostRoom({
-          onConnect: () => {
-            // Host plays white by default
-            const chess = new Chess()
-            saveCurrentFen('')
-            set({
-              mpStatus: 'connected',
-              screen: 'game',
-              chess,
-              gameMode: 'multiplayer',
-              playerColor: 'w',
-              selectedSquare: null,
-              legalMoveSquares: [],
-              capturedPieces: { w: [], b: [] },
-              gameStatus: 'playing',
-              lastMove: null,
-            })
-          },
-          onDisconnect: () => set({ mpStatus: 'idle' }),
-          onError: (err) => set({ mpStatus: 'error', mpError: err }),
-          onMessage: (msg) => handleMpMessage(msg, set, get),
+        unsubscribeRoom(roomChannel)
+        const me = getMultiplayerIdentity(get())
+        const roomId = `room-${Math.random().toString(36).slice(2, 10)}`
+        const chess = new Chess()
+        const room = await createRoom({
+          id: roomId,
+          fen: chess.fen(),
+          pgn: chess.pgn(),
+          turn: 'w',
+          white_player: me,
+          black_player: null,
         })
-        set({ mpRoomLink: getRoomLink(roomId) })
+        applyRoomSnapshot(set, room)
+        roomChannel = subscribeRoomUpdates(
+          roomId,
+          (nextRoom) => {
+            applyRoomSnapshot(set, nextRoom)
+            set({ mpStatus: 'connected' })
+          },
+          (status) => set({ mpStatus: status })
+        )
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, '', `/room/${roomId}`)
+        }
+        set({
+          screen: 'game',
+          gameMode: 'multiplayer',
+          playerColor: 'w',
+          mpRole: 'white',
+          mpRoomId: roomId,
+          mpRoomLink: getRoomLink(roomId),
+          mpStatus: 'connected',
+          mpError: null,
+        })
       } catch (e) {
         set({ mpStatus: 'error', mpError: (e as Error).message })
       }
     },
 
     async joinMultiplayer(roomId: string) {
+      if (!isSupabaseEnabled()) {
+        set({ mpStatus: 'error', mpError: 'Supabase is not configured' })
+        return
+      }
       set({ mpStatus: 'joining', mpError: null })
       try {
-        await joinRoom(roomId, {
-          onConnect: () => {
-            const chess = new Chess()
-            saveCurrentFen('')
-            set({
-              mpStatus: 'connected',
-              screen: 'game',
-              chess,
-              gameMode: 'multiplayer',
-              playerColor: 'b',
-              selectedSquare: null,
-              legalMoveSquares: [],
-              capturedPieces: { w: [], b: [] },
-              gameStatus: 'playing',
-              lastMove: null,
-            })
+        unsubscribeRoom(roomChannel)
+        const me = getMultiplayerIdentity(get())
+        let room = await getRoom(roomId)
+        if (!room) throw new Error('Room not found')
+
+        if (!room.black_player && room.white_player !== me) {
+          await claimBlackSeat(roomId, me)
+          room = await getRoom(roomId)
+          if (!room) throw new Error('Room not found after join')
+        }
+
+        const role: 'white' | 'black' | 'spectator' =
+          room.white_player === me ? 'white'
+            : room.black_player === me ? 'black'
+              : 'spectator'
+
+        applyRoomSnapshot(set, room)
+        roomChannel = subscribeRoomUpdates(
+          roomId,
+          (nextRoom) => {
+            applyRoomSnapshot(set, nextRoom)
+            set({ mpStatus: 'connected' })
           },
-          onDisconnect: () => set({ mpStatus: 'idle' }),
-          onError: (err) => set({ mpStatus: 'error', mpError: err }),
-          onMessage: (msg) => handleMpMessage(msg, set, get),
+          (status) => set({ mpStatus: status })
+        )
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, '', `/room/${roomId}`)
+        }
+        set({
+          screen: 'game',
+          gameMode: 'multiplayer',
+          playerColor: role === 'black' ? 'b' : 'w',
+          mpRole: role,
+          mpRoomId: roomId,
+          mpRoomLink: getRoomLink(roomId),
+          mpStatus: 'connected',
+          mpError: null,
         })
       } catch (e) {
         set({ mpStatus: 'error', mpError: (e as Error).message })
@@ -664,8 +752,18 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     leaveMultiplayer() {
-      mpCleanup()
-      set({ mpStatus: 'idle', mpRoomLink: null, mpError: null })
+      unsubscribeRoom(roomChannel)
+      roomChannel = null
+      if (typeof window !== 'undefined' && /^\/room\//.test(window.location.pathname)) {
+        window.history.replaceState({}, '', '/')
+      }
+      set({
+        mpStatus: 'idle',
+        mpRole: null,
+        mpRoomId: null,
+        mpRoomLink: null,
+        mpError: null,
+      })
     },
 
     // ─── AI Coach ─────────────────────────────────────
@@ -686,73 +784,6 @@ export const useGameStore = create<GameStore>((set, get) => {
     closeCoachReport() { set({ coachReport: null }) },
   }
 })
-
-function handleMpMessage(
-  msg: MpMessage,
-  set: (partial: Partial<GameStore>) => void,
-  get: () => GameStore,
-) {
-  if (msg.type === 'move') {
-    // Use sender board state as source of truth to avoid Safari/mobile desyncs.
-    // FEN is deterministic and lighter to parse than full PGN.
-    const fromFen = new Chess()
-    try {
-      fromFen.load(msg.fen)
-      set({
-        chess: fromFen,
-        selectedSquare: null,
-        legalMoveSquares: [],
-        promotionPending: null,
-        capturedPieces: computeCapturedPieces(fromFen),
-        gameStatus: computeGameStatus(fromFen),
-        lastMove: { from: msg.from, to: msg.to },
-        hintSquare: null,
-        hintToSquare: null,
-      })
-      saveCurrentFen(fromFen.pgn())
-      return
-    } catch {
-      // Fallback below for backward compatibility with older payloads.
-    }
-
-    // Fallback: sender PGN as source of truth.
-    const next = new Chess()
-    try {
-      next.loadPgn(msg.pgn)
-      set({
-        chess: next,
-        selectedSquare: null,
-        legalMoveSquares: [],
-        promotionPending: null,
-        capturedPieces: computeCapturedPieces(next),
-        gameStatus: computeGameStatus(next),
-        lastMove: { from: msg.from, to: msg.to },
-        hintSquare: null,
-        hintToSquare: null,
-      })
-      saveCurrentFen(next.pgn())
-      return
-    } catch {
-      // Fallback for backward compatibility with any old payloads.
-    }
-
-    const { chess } = get()
-    try {
-      chess.move({ from: msg.from, to: msg.to, promotion: msg.promotion })
-      set({
-        selectedSquare: null,
-        legalMoveSquares: [],
-        promotionPending: null,
-        capturedPieces: computeCapturedPieces(chess),
-        gameStatus: computeGameStatus(chess),
-        lastMove: { from: msg.from, to: msg.to },
-        hintSquare: null,
-        hintToSquare: null,
-      })
-      saveCurrentFen(chess.pgn())
-    } catch { /* ignore */ }
-  }
-}
 
 // Auto-load profile on startup if Supabase is enabled
 if (typeof window !== 'undefined') {

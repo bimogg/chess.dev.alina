@@ -5,7 +5,7 @@
  * to local-only mode (LocalStorage profile, no remote leaderboard).
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient, RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 import { UserProfile, LeaderboardEntry } from '../types'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
@@ -29,6 +29,17 @@ export function isSupabaseEnabled(): boolean {
 
 export function getClient(): SupabaseClient | null {
   return client
+}
+
+export interface RoomRow {
+  id: string
+  fen: string
+  pgn: string
+  turn: 'w' | 'b'
+  white_player: string | null
+  black_player: string | null
+  created_at?: string
+  updated_at?: string
 }
 
 // ─── Auth ─────────────────────────────────────────────────────
@@ -145,6 +156,82 @@ export async function getCities(): Promise<string[]> {
   const set = new Set<string>()
   data.forEach((r) => r.city && set.add(r.city))
   return Array.from(set).sort()
+}
+
+// ─── Rooms / Realtime multiplayer ───────────────────────────────
+export async function createRoom(row: RoomRow): Promise<RoomRow> {
+  if (!client) throw new Error('Supabase not configured')
+  const { data, error } = await client
+    .from('rooms')
+    .insert(row)
+    .select('*')
+    .single()
+  if (error || !data) throw new Error(error?.message || 'Failed to create room')
+  return data as RoomRow
+}
+
+export async function getRoom(roomId: string): Promise<RoomRow | null> {
+  if (!client) throw new Error('Supabase not configured')
+  const { data, error } = await client
+    .from('rooms')
+    .select('*')
+    .eq('id', roomId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return (data as RoomRow | null) ?? null
+}
+
+export async function claimBlackSeat(roomId: string, playerId: string): Promise<boolean> {
+  if (!client) throw new Error('Supabase not configured')
+  const { data, error } = await client
+    .from('rooms')
+    .update({ black_player: playerId })
+    .eq('id', roomId)
+    .is('black_player', null)
+    .select('id')
+  if (error) throw new Error(error.message)
+  return Array.isArray(data) && data.length > 0
+}
+
+export async function updateRoomState(
+  roomId: string,
+  payload: Pick<RoomRow, 'fen' | 'pgn' | 'turn'>
+): Promise<RoomRow> {
+  if (!client) throw new Error('Supabase not configured')
+  const { data, error } = await client
+    .from('rooms')
+    .update(payload)
+    .eq('id', roomId)
+    .select('*')
+    .single()
+  if (error || !data) throw new Error(error?.message || 'Failed to update room')
+  return data as RoomRow
+}
+
+export function subscribeRoomUpdates(
+  roomId: string,
+  onRoomUpdate: (room: RoomRow) => void,
+  onStatus?: (status: 'connected' | 'syncing' | 'error') => void
+): RealtimeChannel {
+  if (!client) throw new Error('Supabase not configured')
+  const channel = client
+    .channel(`room:${roomId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
+      (payload) => onRoomUpdate(payload.new as RoomRow)
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') onStatus?.('connected')
+      else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') onStatus?.('error')
+      else onStatus?.('syncing')
+    })
+  return channel
+}
+
+export function unsubscribeRoom(channel: RealtimeChannel | null | undefined) {
+  if (!client || !channel) return
+  client.removeChannel(channel)
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
