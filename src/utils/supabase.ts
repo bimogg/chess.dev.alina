@@ -11,11 +11,10 @@ import { UserProfile, LeaderboardEntry } from '../types'
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
-console.log(
-  'Supabase env exists:',
-  Boolean(import.meta.env.VITE_SUPABASE_URL),
-  Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY)
-)
+console.log("Supabase env:", {
+  url: Boolean(import.meta.env.VITE_SUPABASE_URL),
+  key: Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY)
+})
 
 let client: SupabaseClient | null = null
 
