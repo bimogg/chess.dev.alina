@@ -15,7 +15,9 @@ import {
 } from '../utils/storage'
 import { getBestMove, initEngine } from '../utils/engine'
 import {
+  hostRoom, joinRoom, send as mpSend, cleanup as mpCleanup,
   getRoomLink,
+  MpMessage,
 } from '../utils/multiplayer'
 import {
   isSupabaseEnabled, getCurrentUser, getProfile as remoteGetProfile,
@@ -164,6 +166,47 @@ function applyRoomSnapshot(set: (partial: Partial<GameStore>) => void, room: Roo
     hintSquare: null,
     hintToSquare: null,
   })
+}
+
+function applyPeerMoveMessage(
+  msg: MpMessage,
+  set: (partial: Partial<GameStore>) => void,
+  get: () => GameStore,
+) {
+  if (msg.type !== 'move') return
+  const next = new Chess()
+  try {
+    next.load(msg.fen)
+    set({
+      chess: next,
+      selectedSquare: null,
+      legalMoveSquares: [],
+      promotionPending: null,
+      capturedPieces: computeCapturedPieces(next),
+      gameStatus: computeGameStatus(next),
+      lastMove: { from: msg.from, to: msg.to },
+      hintSquare: null,
+      hintToSquare: null,
+    })
+    saveCurrentFen(next.pgn())
+    return
+  } catch {
+    // fallback to incremental apply
+  }
+  const { chess } = get()
+  try {
+    chess.move({ from: msg.from, to: msg.to, promotion: msg.promotion })
+    set({
+      selectedSquare: null,
+      legalMoveSquares: [],
+      promotionPending: null,
+      capturedPieces: computeCapturedPieces(chess),
+      gameStatus: computeGameStatus(chess),
+      lastMove: { from: msg.from, to: msg.to },
+      hintSquare: null,
+      hintToSquare: null,
+    })
+  } catch { /* ignore */ }
 }
 
 async function runStockfishMove(
@@ -364,6 +407,22 @@ export const useGameStore = create<GameStore>((set, get) => {
                 set({ mpStatus: 'connected', lastMove: { from: selectedSquare, to: square } })
               })
               .catch((e: Error) => set({ mpStatus: 'error', mpError: e.message }))
+          } else if (gameMode === 'multiplayer') {
+            chess.move({ from: selectedSquare, to: square })
+            const newStatus = computeGameStatus(chess)
+            const captured = computeCapturedPieces(chess)
+            saveCurrentFen(chess.pgn())
+
+            set({
+              selectedSquare: null,
+              legalMoveSquares: [],
+              capturedPieces: captured,
+              gameStatus: newStatus,
+              lastMove: { from: selectedSquare, to: square },
+              hintSquare: null,
+              hintToSquare: null,
+            })
+            mpSend({ type: 'move', from: selectedSquare, to: square, pgn: chess.pgn(), fen: chess.fen() })
           } else {
             chess.move({ from: selectedSquare, to: square })
             const newStatus = computeGameStatus(chess)
@@ -421,6 +480,26 @@ export const useGameStore = create<GameStore>((set, get) => {
             set({ mpStatus: 'connected', lastMove: { from: promotionPending.from, to: promotionPending.to } })
           })
           .catch((e: Error) => set({ mpStatus: 'error', mpError: e.message }))
+      } else if (gameMode === 'multiplayer') {
+        chess.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
+        const newStatus = computeGameStatus(chess)
+        const captured = computeCapturedPieces(chess)
+        saveCurrentFen(chess.pgn())
+
+        set({
+          promotionPending: null,
+          capturedPieces: captured,
+          gameStatus: newStatus,
+          lastMove: { from: promotionPending.from, to: promotionPending.to },
+        })
+        mpSend({
+          type: 'move',
+          from: promotionPending.from,
+          to: promotionPending.to,
+          promotion: piece,
+          pgn: chess.pgn(),
+          fen: chess.fen(),
+        })
       } else {
         chess.move({ from: promotionPending.from, to: promotionPending.to, promotion: piece })
         const newStatus = computeGameStatus(chess)
@@ -649,7 +728,34 @@ export const useGameStore = create<GameStore>((set, get) => {
     // ─── Multiplayer ──────────────────────────────────
     async hostMultiplayer() {
       if (!isSupabaseEnabled()) {
-        set({ mpStatus: 'error', mpError: 'Supabase not configured' })
+        // Fallback: old PeerJS path if Supabase env is missing in deployment.
+        set({ mpStatus: 'hosting', mpError: null, mpRoomId: null, mpReadOnly: false })
+        try {
+          const roomId = await hostRoom({
+            onConnect: () => {
+              const chess = new Chess()
+              saveCurrentFen('')
+              set({
+                mpStatus: 'connected',
+                screen: 'game',
+                chess,
+                gameMode: 'multiplayer',
+                playerColor: 'w',
+                selectedSquare: null,
+                legalMoveSquares: [],
+                capturedPieces: { w: [], b: [] },
+                gameStatus: 'playing',
+                lastMove: null,
+              })
+            },
+            onDisconnect: () => set({ mpStatus: 'idle' }),
+            onError: (err) => set({ mpStatus: 'error', mpError: err }),
+            onMessage: (msg) => applyPeerMoveMessage(msg, set, get),
+          })
+          set({ mpRoomLink: getRoomLink(roomId) })
+        } catch (e) {
+          set({ mpStatus: 'error', mpError: (e as Error).message })
+        }
         return
       }
       set({ mpStatus: 'hosting', mpError: null })
@@ -692,7 +798,33 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     async joinMultiplayer(roomId: string) {
       if (!isSupabaseEnabled()) {
-        set({ mpStatus: 'error', mpError: 'Supabase not configured' })
+        // Fallback: old PeerJS path if Supabase env is missing in deployment.
+        set({ mpStatus: 'joining', mpError: null, mpRoomId: null, mpReadOnly: false })
+        try {
+          await joinRoom(roomId, {
+            onConnect: () => {
+              const chess = new Chess()
+              saveCurrentFen('')
+              set({
+                mpStatus: 'connected',
+                screen: 'game',
+                chess,
+                gameMode: 'multiplayer',
+                playerColor: 'b',
+                selectedSquare: null,
+                legalMoveSquares: [],
+                capturedPieces: { w: [], b: [] },
+                gameStatus: 'playing',
+                lastMove: null,
+              })
+            },
+            onDisconnect: () => set({ mpStatus: 'idle' }),
+            onError: (err) => set({ mpStatus: 'error', mpError: err }),
+            onMessage: (msg) => applyPeerMoveMessage(msg, set, get),
+          })
+        } catch (e) {
+          set({ mpStatus: 'error', mpError: (e as Error).message })
+        }
         return
       }
       set({ mpStatus: 'joining', mpError: null })
@@ -733,6 +865,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     leaveMultiplayer() {
+      mpCleanup()
       unsubscribeRoom(roomChannel)
       roomChannel = null
       set({ mpStatus: 'idle', mpRoomId: null, mpRoomLink: null, mpReadOnly: false, mpError: null })
