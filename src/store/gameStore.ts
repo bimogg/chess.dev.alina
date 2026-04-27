@@ -168,6 +168,13 @@ function applyRoomSnapshot(set: (partial: Partial<GameStore>) => void, room: Roo
   })
 }
 
+function canCurrentPlayerMove(playerColor: 'w' | 'b', turn: 'w' | 'b'): boolean {
+  return !(
+    (playerColor === 'w' && turn !== 'w') ||
+    (playerColor === 'b' && turn !== 'b')
+  )
+}
+
 function applyPeerMoveMessage(
   msg: MpMessage,
   set: (partial: Partial<GameStore>) => void,
@@ -374,9 +381,13 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (gameStatus === 'checkmate' || gameStatus === 'stalemate' || gameStatus === 'draw') return
 
       const turn = chess.turn()
+      if (gameMode === 'multiplayer') {
+        console.log('TURN:', chess.turn())
+        console.log('PLAYER:', playerColor)
+      }
       if (gameMode === 'vs-ai' && turn !== playerColor) return
-      if (gameMode === 'multiplayer' && (mpReadOnly || turn !== playerColor)) return
-      if (gameMode === 'multiplayer' && mpStatus !== 'connected') return
+      if (gameMode === 'multiplayer' && mpReadOnly) return
+      if (gameMode === 'multiplayer' && (mpStatus === 'joining' || mpStatus === 'error')) return
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const piece = chess.get(square as any)
@@ -387,28 +398,36 @@ export const useGameStore = create<GameStore>((set, get) => {
           return
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const legalMoves = chess.moves({ square: selectedSquare as any, verbose: true })
-        const targetMove = legalMoves.find(m => m.to === square)
-
-        if (targetMove) {
+        if (selectedSquare !== square) {
           if (needsPromotion(chess, selectedSquare, square)) {
             set({ promotionPending: { from: selectedSquare, to: square }, selectedSquare: null, legalMoveSquares: [] })
             return
           }
 
+          const turnBeforeMove = chess.turn()
+          const validated = new Chess(chess.fen())
+          const moveResult = validated.move({ from: selectedSquare, to: square })
+          if (!moveResult) {
+            set({ mpError: 'Illegal move' })
+            return
+          }
+
+          if (gameMode === 'multiplayer' && !canCurrentPlayerMove(playerColor, turnBeforeMove)) {
+            set({ mpError: 'Not your turn' })
+            return
+          }
+
           if (gameMode === 'multiplayer' && mpRoomId) {
-            const next = new Chess(chess.fen())
-            next.move({ from: selectedSquare, to: square })
+            const next = validated
             set({ mpStatus: 'hosting' })
             updateRoomState(mpRoomId, { fen: next.fen(), pgn: next.pgn(), turn: next.turn() })
               .then((room) => {
                 applyRoomSnapshot(set, room)
-                set({ mpStatus: 'connected', lastMove: { from: selectedSquare, to: square } })
+                set({ mpStatus: 'connected', lastMove: { from: selectedSquare, to: square }, mpError: null })
               })
               .catch((e: Error) => set({ mpStatus: 'error', mpError: e.message }))
           } else if (gameMode === 'multiplayer') {
-            chess.move({ from: selectedSquare, to: square })
+            chess.move({ from: selectedSquare, to: square, promotion: moveResult.promotion })
             const newStatus = computeGameStatus(chess)
             const captured = computeCapturedPieces(chess)
             saveCurrentFen(chess.pgn())
@@ -421,10 +440,11 @@ export const useGameStore = create<GameStore>((set, get) => {
               lastMove: { from: selectedSquare, to: square },
               hintSquare: null,
               hintToSquare: null,
+              mpError: null,
             })
             mpSend({ type: 'move', from: selectedSquare, to: square, pgn: chess.pgn(), fen: chess.fen() })
           } else {
-            chess.move({ from: selectedSquare, to: square })
+            chess.move({ from: selectedSquare, to: square, promotion: moveResult.promotion })
             const newStatus = computeGameStatus(chess)
             const captured = computeCapturedPieces(chess)
             saveCurrentFen(chess.pgn())
@@ -437,6 +457,7 @@ export const useGameStore = create<GameStore>((set, get) => {
               lastMove: { from: selectedSquare, to: square },
               hintSquare: null,
               hintToSquare: null,
+              mpError: null,
             })
           }
           if (gameMode === 'vs-ai' && !chess.isGameOver()) {

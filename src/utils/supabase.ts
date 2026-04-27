@@ -214,7 +214,9 @@ export function subscribeRoomUpdates(
       { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
       (payload) => onUpdate(payload.new as RoomRow)
     )
-    .subscribe()
+    .subscribe((status) => {
+      console.log(`[Realtime room:${roomId}]`, status)
+    })
 }
 
 export function unsubscribeRoom(channel: RealtimeChannel | null | undefined) {
