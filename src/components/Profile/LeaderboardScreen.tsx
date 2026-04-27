@@ -31,13 +31,22 @@ export function LeaderboardScreen() {
     setLoading(true)
     ;(async () => {
       if (supabaseAvailable) {
-        const [list, cityList] = await Promise.all([
+        const [remoteList, cityList] = await Promise.all([
           filter === 'global' ? getGlobalLeaderboard() : getCityLeaderboard(filter),
           getCities(),
         ])
+        // If remote leaderboard is still empty, show demo seed so the UI
+        // doesn't look broken during early testing.
+        let list = [...remoteList]
+        if (list.length === 0) {
+          list = [...DEMO_LEADERBOARD]
+          if (filter !== 'global') list = list.filter(e => e.city === filter)
+          list.sort((a, b) => b.elo - a.elo)
+        }
         if (cancelled) return
         setEntries(list)
-        setCities(cityList)
+        const fallbackCities = Array.from(new Set(DEMO_LEADERBOARD.map(e => e.city).filter(Boolean))).sort()
+        setCities(cityList.length > 0 ? cityList : fallbackCities)
       } else {
         // Demo mode: use seed + insert local profile if exists
         let list = [...DEMO_LEADERBOARD]

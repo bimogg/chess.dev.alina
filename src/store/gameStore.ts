@@ -21,7 +21,7 @@ import {
 } from '../utils/multiplayer'
 import {
   isSupabaseEnabled, getCurrentUser, getProfile as remoteGetProfile,
-  upsertProfile, signOut as supaSignOut, recordGameResult,
+  upsertProfile, signOut as supaSignOut,
   createRoom, getRoom, claimBlackSeat, updateRoomState,
   subscribeRoomUpdates, unsubscribeRoom, RoomRow,
 } from '../utils/supabase'
@@ -284,43 +284,63 @@ async function runStockfishMove(
       gameStatus: newStatus,
       lastMove: { from: moved.from, to: moved.to },
     })
-    // Track game result for ranked play
-    void maybeRecordResult(get(), newStatus)
+    // Track game result for profile stats/rating.
+    void maybeRecordResult(get(), newStatus, set)
   } catch (e) {
     console.error('[AI move]', e)
     set({ aiThinking: false })
   }
 }
 
-async function maybeRecordResult(state: GameStore, status: GameStatus) {
+async function maybeRecordResult(
+  state: GameStore,
+  status: GameStatus,
+  set: (partial: Partial<GameStore>) => void
+) {
   if (status !== 'checkmate' && status !== 'stalemate' && status !== 'draw') return
-  if (state.gameMode !== 'vs-ai') return
   if (!state.profile) return
+
   // In checkmate, the side to move just LOST.
   const turn = state.chess.turn()
   let result: 'win' | 'loss' | 'draw'
-  if (status === 'checkmate') {
+
+  // Local mode has no single "you vs opponent" ownership; count the game as played.
+  if (state.gameMode === 'local') {
+    result = 'draw'
+  } else if (status === 'checkmate') {
     result = turn === state.playerColor ? 'loss' : 'win'
   } else {
     result = 'draw'
   }
+
+  const k = 16
+  const expected = 0.5
+  const score = result === 'win' ? 1 : result === 'draw' ? 0.5 : 0
+  const shouldAdjustElo = state.gameMode !== 'local'
+  const newElo = shouldAdjustElo
+    ? Math.round(state.profile.elo + k * (score - expected))
+    : state.profile.elo
+
+  const updated: UserProfile = {
+    ...state.profile,
+    elo: newElo,
+    gamesPlayed: state.profile.gamesPlayed + 1,
+    wins: state.profile.wins + (result === 'win' ? 1 : 0),
+    losses: state.profile.losses + (result === 'loss' ? 1 : 0),
+    draws: state.profile.draws + (result === 'draw' ? 1 : 0),
+  }
+
+  // Update UI + local cache immediately so profile never stays stale at 0.
+  localSaveProfile(updated)
+  set({ profile: updated })
+
+  // Best-effort cloud sync for signed-in users.
   if (isSupabaseEnabled()) {
-    try { await recordGameResult(state.profile.id, result, 1200 + state.difficulty * 100) } catch { /* ignore */ }
-  } else {
-    // Local-only: bump local profile elo
-    const k = 16
-    const expected = 0.5
-    const score = result === 'win' ? 1 : result === 'draw' ? 0.5 : 0
-    const newElo = Math.round(state.profile.elo + k * (score - expected))
-    const updated: UserProfile = {
-      ...state.profile,
-      elo: newElo,
-      gamesPlayed: state.profile.gamesPlayed + 1,
-      wins: state.profile.wins + (result === 'win' ? 1 : 0),
-      losses: state.profile.losses + (result === 'loss' ? 1 : 0),
-      draws: state.profile.draws + (result === 'draw' ? 1 : 0),
+    try {
+      await upsertProfile(updated)
+    } catch {
+      /* ignore cloud sync errors; local stats already updated */
     }
-    localSaveProfile(updated)
   }
 }
 
@@ -503,6 +523,10 @@ export const useGameStore = create<GameStore>((set, get) => {
               console.log('supabase update result', null)
               applyRoomSnapshot(set, room)
               set({ mpStatus: 'connected', lastMove: { from: selectedSquare, to: square }, mpError: null })
+              const roomStatus = computeGameStatus(new Chess(room.fen))
+              if (roomStatus === 'checkmate' || roomStatus === 'stalemate' || roomStatus === 'draw') {
+                void maybeRecordResult(get(), roomStatus, set)
+              }
             })
             .catch((e: Error) => {
               console.log('supabase update result', e.message)
@@ -621,7 +645,7 @@ export const useGameStore = create<GameStore>((set, get) => {
             setTimeout(() => runStockfishMove(chess, difficulty, set, get), 80)
           }
           if (chess.isGameOver()) {
-            void maybeRecordResult(get(), computeGameStatus(chess))
+            void maybeRecordResult(get(), computeGameStatus(chess), set)
           }
           return
         }
@@ -709,6 +733,10 @@ export const useGameStore = create<GameStore>((set, get) => {
             console.log('supabase update result', null)
             applyRoomSnapshot(set, room)
             set({ mpStatus: 'connected', lastMove: { from: promotionPending.from, to: promotionPending.to }, mpError: null })
+            const roomStatus = computeGameStatus(new Chess(room.fen))
+            if (roomStatus === 'checkmate' || roomStatus === 'stalemate' || roomStatus === 'draw') {
+              void maybeRecordResult(get(), roomStatus, set)
+            }
           })
           .catch((e: Error) => {
             console.log('supabase update result', e.message)
@@ -765,7 +793,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         setTimeout(() => runStockfishMove(chess, difficulty, set, get), 80)
       }
       if (chess.isGameOver()) {
-        void maybeRecordResult(get(), computeGameStatus(chess))
+        void maybeRecordResult(get(), computeGameStatus(chess), set)
       }
     },
 

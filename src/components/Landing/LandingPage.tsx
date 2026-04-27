@@ -161,9 +161,6 @@ export function LandingPage() {
             <button className="lp-btn-hero-primary" onClick={goToSetup}>
               Начать игру
             </button>
-            <button className="lp-btn-hero-ghost" onClick={goToMultiplayerLobby}>
-              ✦ Играть с другом
-            </button>
             <button className="lp-btn-hero-ghost" onClick={openProUpgrade}>
               ★ Pro
             </button>
