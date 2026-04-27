@@ -303,7 +303,7 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 
 /* Captured pieces */
 .captured-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
-.captured-label { font-size: 10px; color: var(--text-muted); width: 36px; flex-shrink: 0; }
+.captured-label { font-size: 10px; color: var(--text-muted); width: 52px; flex-shrink: 0; }
 .captured-pieces { display: flex; flex-wrap: wrap; gap: 1px; }
 .captured-piece { font-size: 13px; line-height: 1; }
 
@@ -919,6 +919,142 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   line-height: 1.55;
   padding-top: 8px;
   border-top: 1px solid rgba(212,168,67,0.2);
+}
+
+/* ─── SIDEBAR V2 — clean game-only ─────────────────────────────────── */
+
+.sidebar-v2 .sidebar-section { padding: 12px 14px; }
+
+/* 1. Status hero — most prominent block */
+.status-hero {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.status-hero--check { border-color: rgba(210,153,34,0.4); background: rgba(210,153,34,0.06); }
+.status-hero--over  { border-color: rgba(212,168,67,0.45); background: linear-gradient(135deg, rgba(212,168,67,0.10), rgba(212,168,67,0.02)); }
+.status-hero--waiting { border-color: rgba(139,148,158,0.35); }
+
+.status-hero-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.status-hero-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-hero-dot--live    { background: var(--success); box-shadow: 0 0 7px var(--success); }
+.status-hero-dot--check   { background: var(--warning); box-shadow: 0 0 7px var(--warning); animation: pulse 1s infinite; }
+.status-hero-dot--over    { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.status-hero-dot--waiting { background: var(--text-secondary); }
+
+.status-hero-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+  flex: 1;
+}
+.status-hero-thinking {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  animation: pulse 1.4s infinite;
+}
+
+.status-hero-side {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.status-hero-turn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.status-hero-turn--mine {
+  background: rgba(63,185,80,0.10);
+  border-color: rgba(63,185,80,0.35);
+}
+.status-hero-turn-color {
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.status-hero-turn-color--w { background: #ecdfc8; }
+.status-hero-turn-color--b { background: #1c0e08; }
+
+.status-hero-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 6px 10px;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  border-left: 2px solid var(--text-secondary);
+}
+
+/* 2. Invite friend card */
+.invite-card {
+  background: linear-gradient(135deg, rgba(193,57,43,0.10), rgba(193,57,43,0.02));
+  border: 1px solid rgba(193,57,43,0.32);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.invite-card-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.1px;
+}
+.invite-card-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.invite-card-btn {
+  background: #C1392B;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: 7px;
+  border: none;
+  letter-spacing: -0.1px;
+}
+.invite-card-btn:hover { background: #a82e22; }
+.invite-card-status {
+  font-size: 11px;
+  color: var(--success);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* 5. Empty list line (for Ходы / Взятые фигуры) */
+.empty-line {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 10px 0 4px;
 }
 
 /* ─── GAME OVER MODAL ────────────────────────────────────────────── */
@@ -1867,7 +2003,7 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   .sidebar { width: 280px; }
   .main-layout { flex-direction: column; }
   .canvas-area { min-height: 50vh; }
-  .sidebar { width: 100%; max-height: 50vh; border-left: none; border-top: 1px solid var(--border); }
+  .sidebar { width: 100%; max-height: none; border-left: none; border-top: 1px solid var(--border); }
 }
 
 @media (max-width: 580px) {

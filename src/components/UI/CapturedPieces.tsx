@@ -12,7 +12,7 @@ export function CapturedPieces() {
   return (
     <div>
       <div className="captured-row">
-        <span className="captured-label" style={{ color: '#e8d9c0' }}>White</span>
+        <span className="captured-label" style={{ color: '#e8d9c0' }}>Белые:</span>
         <div className="captured-pieces">
           {sort(capturedPieces.w).map((p, i) => (
             <span key={i} className="captured-piece">{PIECE_SYMBOLS[p]?.b || '♟'}</span>
@@ -20,7 +20,7 @@ export function CapturedPieces() {
         </div>
       </div>
       <div className="captured-row">
-        <span className="captured-label" style={{ color: '#8b949e' }}>Black</span>
+        <span className="captured-label" style={{ color: '#8b949e' }}>Чёрные:</span>
         <div className="captured-pieces">
           {sort(capturedPieces.b).map((p, i) => (
             <span key={i} className="captured-piece" style={{ filter: 'invert(0.8)' }}>{PIECE_SYMBOLS[p]?.w || '♙'}</span>
