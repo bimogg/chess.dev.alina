@@ -45,7 +45,7 @@ export function initEngine(): Promise<boolean> {
     const timeout = setTimeout(() => {
       console.warn('[Engine] Stockfish init timed out, falling back')
       resolve(false)
-    }, 8000)
+    }, 20000) // first WASM load can take ~10s on slow connections
 
     worker.onerror = () => {
       clearTimeout(timeout)
