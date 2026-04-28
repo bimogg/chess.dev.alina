@@ -1365,6 +1365,43 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 }
 :root[data-theme='light'] .lp-nav-logo { color: #1f2328; }
 .lp-nav-right { display: flex; align-items: center; gap: 8px; }
+.lp-nav-lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.72);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+.lp-nav-lang svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  opacity: 0.95;
+}
+.lp-nav-lang:hover {
+  border-color: rgba(255,255,255,0.34);
+  color: #f5f5f5;
+  background: rgba(255,255,255,0.08);
+}
+:root[data-theme='light'] .lp-nav-lang {
+  color: rgba(0,0,0,0.62);
+  border-color: rgba(0,0,0,0.16);
+  background: rgba(0,0,0,0.02);
+}
+:root[data-theme='light'] .lp-nav-lang:hover {
+  color: #1f2328;
+  border-color: rgba(0,0,0,0.34);
+  background: rgba(0,0,0,0.06);
+}
 .lp-nav-link {
   background: none;
   border: none;
@@ -1475,12 +1512,13 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 /* ─────────────────────────── HERO ─────────────────────────────── */
 
 .lp-hero {
-  height: 100vh;
+  height: auto;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   position: relative;
-  overflow: hidden;
+  padding-bottom: 72px;
+  overflow: visible;
   background: #0d0f12;
   perspective: 1400px;
   isolation: isolate;
@@ -1505,7 +1543,7 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   width: 128%;
   bottom: -22%;
   height: 38%;
-  background: linear-gradient(180deg, #f0f0ec 0%, #f6f6f3 38%, #fcfcfa 100%);
+  background: #F4F4F1;
   transform: rotate(-1.4deg) skewY(-1.8deg);
   transform-origin: top left;
   z-index: 1;
@@ -1557,9 +1595,9 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   line-height: 0.95;
 }
 .lp-hero-title-main {
-  font-family: inherit;
+  font-family: "Bebas Neue", sans-serif;
   font-size: clamp(56px, 7.5vw, 110px);
-  font-weight: 800;
+  font-weight: 400;
   letter-spacing: 0.02em;
   color: #ffffff;
   text-shadow: 0 4px 36px rgba(0,0,0,0.5);
@@ -1614,6 +1652,15 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   border-color: #a93125;
   color: #ffffff;
 }
+:root[data-theme='light'] .lp-start-game-proximity,
+.lp-start-game-proximity {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
 :root[data-theme='light'] .lp-btn-hero-primary { background: #c1392b; color: #fff; border-color: #c1392b; }
 :root[data-theme='light'] .lp-btn-hero-primary:hover { background: #a93125; border-color: #a93125; color: #fff; }
 
@@ -1648,8 +1695,8 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   position: relative;
   width: min(78vw, 1280px);
   min-width: 700px;
-  height: min(62vh, 680px);
-  margin: -8px auto 0;     /* slightly overlap with the title block */
+  height: min(56vh, 620px);
+  margin: 18px auto 0;
   z-index: 14;
   pointer-events: auto;
   background: transparent;
@@ -1657,7 +1704,14 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   box-shadow: none;
   outline: none;
   cursor: grab;
-  flex: 1;                  /* fill the rest of the hero */
+  flex: 0 0 auto;
+  overflow: visible;
+  clip-path: none;
+  mask: none;
+  -webkit-mask: none;
+  /* Inset slack so framebuffer bottom edge does not shave the tilted board. */
+  padding-bottom: 34px;
+  box-sizing: border-box;
 }
 .lp-hero-scene:active { cursor: grabbing; }
 .lp-hero-scene::before,
@@ -1671,6 +1725,11 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  outline: none !important;
+  overflow: visible !important;
+  clip-path: none !important;
+  mask: none !important;
+  -webkit-mask: none !important;
   display: block;
 }
 
@@ -1759,39 +1818,172 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 /* ─────────────────────── FEATURES (compact 2×3 grid) ───────────── */
 
 .lp-feats {
-  padding: 88px 0;
-  border-top: 1px solid rgba(255,255,255,0.05);
+  --lp-feats-diagonal-cut: 72px;
+  padding: 32px 0 80px;
+  border-top: none;
+  background: #F4F4F1;
+  /* Nav is absolute overlay — hash links align title comfortably below viewport top */
+  scroll-margin-top: 88px;
+  position: relative;
+  z-index: 20;
+  overflow: visible;
+  clip-path: none;
+}
+.lp-feats::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -126px;
+  height: var(--lp-feats-diagonal-cut);
+  background: #141821;
+  clip-path: polygon(0 100%, 100% 0, 100% 100%, 0 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+.lp-feats::after {
+  content: none;
+}
+.lp-feats > .lp-container::after {
+  content: 'CHESS\A VERSE';
+  position: absolute;
+  right: clamp(26px, 3.6vw, 62px);
+  top: 62%;
+  transform: translateY(-50%);
+  white-space: pre;
+  font-family: 'Bebas Neue', 'Inter', system-ui, sans-serif;
+  font-size: clamp(108px, 15.8vw, 240px);
+  line-height: 0.78;
+  font-weight: 700;
+  letter-spacing: 0.006em;
+  color: rgba(24, 29, 36, 0.11);
+  pointer-events: none;
+  z-index: 0;
+}
+.lp-feats .lp-section-title { color: #1f2328; }
+.lp-feats .lp-section-sub { color: #57606a; }
+/* Explicit contrast: base .lp-section-title is light text for dark BG — feats block is light */
+#features-heading,
+.lp-feats #features-heading {
+  color: #161b26;
+}
+#features-sub,
+.lp-feats #features-sub {
+  color: #444c56;
+}
+
+/* «Возможности» — левое выравнивание как у карточек, линия-разделитель */
+.lp-feats-heading-wrap {
+  --lp-feats-title-size: clamp(34px, 3.5vw, 44px);
+  max-width: none;
+  margin: 0 0 52px;
+  padding: 0;
+  text-align: left;
+  position: relative;
+  z-index: 3;
+}
+.lp-feats-header {
+  margin-bottom: 0;
+  text-align: left;
+}
+.lp-feats-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  margin-bottom: 8px;
+}
+.lp-feats-header .lp-section-title.lp-feats-title {
+  margin: 0;
+  font-size: var(--lp-feats-title-size);
+  font-weight: 740;
+  letter-spacing: -0.018em;
+  line-height: 1;
+  font-family: 'Bebas Neue', 'Oswald', 'Inter', system-ui, sans-serif;
+}
+.lp-feats-heading-rule-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 80px;
+  padding-top: 0;
+}
+.lp-feats-heading-rule {
+  display: block;
+  width: 100%;
+  height: 0;
+  margin: 0;
+  border: none;
+  /* Как пунктир под заголовком в hero — сегменты «- - - », тёмный + лёгкий акцент */
+  border-top: 1px dashed rgba(55, 60, 70, 0.42);
+  background: none;
+}
+.lp-feats-sub {
+  margin: 0;
+  max-width: 36ch;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #6b7280;
+  letter-spacing: -0.01em;
+}
+
+/* Full-section 3D deco: behind cards; soft + dim so it stays premium, not loud */
+.lp-feats-float {
+  position: absolute;
+  right: clamp(54px, 7.2vw, 128px);
+  top: 8%;
+  width: min(580px, 40vw);
+  height: 88%;
+  padding: 26px 24px 24px 20px;
+  box-sizing: border-box;
+  pointer-events: auto;
+  z-index: 0;
+  opacity: 0.98;
+  overflow: visible;
+  cursor: grab;
+}
+.lp-feats-float:active { cursor: grabbing; }
+.lp-feats > .lp-container {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+}
+.lp-feats-grid {
+  position: relative;
+  z-index: 2;
+}
+.lp-feats .lp-feat-card {
+  z-index: 2;
+  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.048);
 }
 
 .lp-feats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 24px;
+  max-width: 640px;
+  margin: 0;
+  padding: 0;
 }
 
 .lp-feat-card {
   background: #111113;
   border: 1px solid rgba(255,255,255,0.07);
   border-radius: 12px;
-  padding: 24px 22px;
+  padding: 24px 20px 22px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 0;
   transition: border-color 0.2s ease, transform 0.2s ease;
   position: relative;
   overflow: hidden;
 }
+.lp-feat-card {
+  background: #ffffff;
+  border-color: rgba(0,0,0,0.08);
+}
 .lp-feat-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0;
-  width: 28px;
-  height: 2px;
-  background: #C1392B;
-  border-radius: 0 0 2px 0;
+  content: none;
 }
 .lp-feat-card:hover {
   border-color: rgba(193, 57, 43, 0.32);
@@ -1805,36 +1997,43 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 }
 
 .lp-feat-card-kicker {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  width: fit-content;
-  padding: 4px 10px;
-  margin-bottom: 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  display: inline-block;
+  min-width: 0;
+  width: auto;
+  padding: 0 0 8px;
+  margin-bottom: 12px;
+  border-radius: 0;
+  font-family: 'Bebas Neue', 'Oswald', 'Inter', system-ui, sans-serif;
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 0.86;
   color: #C1392B;
-  background: rgba(193, 57, 43, 0.12);
-  border: 1px solid rgba(193, 57, 43, 0.35);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid #C1392B;
 }
 
 .lp-feat-card-name {
-  font-size: 15px;
+  font-size: 19px;
+  font-family: 'Bebas Neue', 'Oswald', 'Inter', system-ui, sans-serif;
   font-weight: 700;
   color: #F5F5F5;
-  margin: 0;
-  letter-spacing: -0.2px;
+  margin: 0 0 10px;
+  line-height: 1.12;
+  letter-spacing: 0.02em;
 }
+.lp-feat-card-name { color: #1f2328; }
 
 .lp-feat-card-desc {
-  font-size: 13px;
+  font-size: 15px;
   color: #A1A1AA;
-  line-height: 1.55;
+  line-height: 1.56;
   margin: 0;
+  max-width: 24ch;
+  letter-spacing: 0;
 }
+.lp-feat-card-desc { color: #57606a; }
 
 :root[data-theme='light'] .lp-feat-card {
   background: #ffffff;
@@ -1850,6 +2049,13 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   padding: 88px 0;
   border-top: 1px solid rgba(255,255,255,0.05);
 }
+.lp-why {
+  background:
+    radial-gradient(120% 90% at 10% 12%, rgba(193,57,43,0.07) 0%, transparent 58%),
+    linear-gradient(180deg, #fbf8f2 0%, #f6f1e8 100%);
+  border-top-color: rgba(183,134,40,0.14);
+}
+.lp-why .lp-section-title { color: #1f2328; }
 .lp-why-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1861,6 +2067,10 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 12px;
   transition: border-color 0.2s;
+}
+.lp-why-item {
+  background: #ffffff;
+  border-color: rgba(0,0,0,0.08);
 }
 .lp-why-item:hover { border-color: rgba(185,28,28,0.15); }
 .lp-why-num {
@@ -1878,12 +2088,14 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   margin-bottom: 8px;
   letter-spacing: -0.1px;
 }
+.lp-why-title { color: #1f2328; }
 .lp-why-desc {
   font-size: 13px;
   color: #A1A1AA;
   line-height: 1.6;
   margin: 0;
 }
+.lp-why-desc { color: #57606a; }
 
 /* ─────────────────────────── CTA ────────────────────────────────── */
 
@@ -1935,14 +2147,25 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 
 .lp-pieces {
   padding: 88px 0;
-  border-top: 1px solid rgba(255,255,255,0.05);
+  border-top: none;
+  position: relative;
+  overflow: visible;
 }
+.lp-pieces {
+  background: #f3eee4;
+  border-top-color: transparent;
+}
+.lp-pieces::before {
+  content: none;
+}
+.lp-pieces::after {
+  content: none;
+}
+.lp-pieces .lp-section-title { color: #1f2328; }
+.lp-pieces .lp-section-sub { color: #57606a; }
 :root[data-theme='light'] .lp-pieces {
-  background:
-    radial-gradient(120% 90% at 12% 8%, rgba(193,57,43,0.08) 0%, transparent 58%),
-    radial-gradient(120% 90% at 88% 22%, rgba(183,134,40,0.12) 0%, transparent 62%),
-    linear-gradient(180deg, #fbf8f2 0%, #f3eee4 100%);
-  border-top-color: rgba(183,134,40,0.14);
+  background: #f3eee4;
+  border-top-color: transparent;
 }
 
 .lp-pieces-grid {
@@ -1966,6 +2189,10 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   transition: opacity 0.6s ease, transform 0.6s ease,
               border-color 0.25s ease, box-shadow 0.25s ease;
   transition-delay: var(--pc-delay, 0s);
+}
+.lp-piece-card {
+  background: #ffffff;
+  border-color: rgba(0,0,0,0.08);
 }
 .lp-piece-visible {
   opacity: 1;
@@ -2002,6 +2229,7 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   color: #F5F5F5;
   margin: 0 0 14px;
 }
+.lp-piece-card-name { color: #1f2328; }
 
 .lp-piece-card-desc {
   font-size: 13px;
@@ -2009,6 +2237,7 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   line-height: 1.7;
   margin: 0;
 }
+.lp-piece-card-desc { color: #57606a; }
 
 .lp-piece-card-stat {
   padding-top: 16px;
@@ -2029,6 +2258,7 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   color: #F5F5F5;
   letter-spacing: 0.2px;
 }
+.lp-piece-card-stat-val { color: #1f2328; }
 :root[data-theme='light'] .lp-piece-card-stat-val {
   color: #1f2328;
 }
@@ -2038,7 +2268,7 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 @media (max-width: 960px) {
   .lp-nav { padding: 18px 24px; }
   .lp-container { padding: 0 24px; }
-  .lp-hero { overflow: hidden; }
+  .lp-hero { overflow: visible; }
   .lp-hero-head {
     padding: 88px 18px 6px;
   }
@@ -2059,7 +2289,28 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   }
   .lp-why { padding: 72px 0; }
   .lp-pieces { padding: 72px 0; }
-  .lp-feats { padding: 64px 0; }
+  .lp-feats {
+    --lp-feats-diagonal-cut: 54px;
+    padding: 28px 0 64px;
+  }
+  .lp-feats-heading-wrap {
+    --lp-feats-title-size: clamp(25px, 3.4vw, 30px);
+    padding: 0 20px;
+    margin-bottom: 44px;
+  }
+  .lp-feats-float {
+    right: clamp(30px, 4.2vw, 50px);
+    top: 8%;
+    width: min(250px, 24vw);
+    height: 74%;
+    opacity: 0.22;
+  }
+  .lp-feats > .lp-container::after {
+    right: clamp(22px, 4vw, 60px);
+    top: 58%;
+    transform: translateY(-50%);
+    font-size: clamp(84px, 13vw, 168px);
+  }
   .lp-feats-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 0 20px; }
 
   .lp-why-grid   { grid-template-columns: 1fr; gap: 16px; }
@@ -2144,6 +2395,24 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
     transform: rotate(-1.1deg) skewY(-1.7deg);
   }
 
+  .lp-feats-heading-wrap {
+    --lp-feats-title-size: clamp(24px, 7.5vw, 30px);
+    padding: 0 16px;
+    margin-bottom: 38px;
+  }
+  .lp-feats-heading-row {
+    gap: 12px;
+  }
+  .lp-feats-sub {
+    font-size: 14px;
+    max-width: 30ch;
+  }
+  .lp-feats-float {
+    display: none;
+  }
+  .lp-feats > .lp-container::after {
+    display: none;
+  }
   .lp-feats-grid { grid-template-columns: 1fr; gap: 12px; padding: 0 16px; }
   .lp-feat-card { padding: 18px 16px; }
   .lp-section-header { margin-bottom: 36px; }

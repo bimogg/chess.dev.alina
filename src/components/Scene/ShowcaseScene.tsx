@@ -75,8 +75,9 @@ function ShowcaseBoardMesh() {
 
 function ShowcaseBoard() {
   // Tilted slightly clockwise — Webshocker-style 3D product shot
+  // Raised slightly so the bottom/front edge clears the framebuffer (no bottom crop).
   return (
-    <group position={[0, 0, 0]} rotation={[0, -0.32, 0]} scale={[1.05, 1.05, 1.05]}>
+    <group position={[0, 0.37, 0]} rotation={[0, -0.32, 0]} scale={[0.97, 0.97, 0.97]}>
       <ShowcaseBoardMesh />
       {STARTING.map(p => (
         <ChessPiece
@@ -103,7 +104,8 @@ export function ShowcaseScene() {
         // Webshocker-style hero camera: high tilt, board centered horizontally,
         // black pieces in front-left, white in back-right. Lower fov tightens
         // the framing so the board fills the canvas dramatically.
-        camera={{ position: [0, 7.5, 11], fov: 32, near: 0.3, far: 140 }}
+        // Camera pulled back slightly so the full board edge stays in view.
+        camera={{ position: [0, 7.68, 13.08], fov: 32, near: 0.3, far: 140 }}
         gl={{
           antialias: true,
           alpha: true,
@@ -148,7 +150,7 @@ export function ShowcaseScene() {
           <ShowcaseBoard />
           {/* Floor shadow follows the (rotating) board — anchors it visually */}
           <ContactShadows
-            position={[0, -0.2, 0]}
+            position={[0, 0.02, 0]}
             opacity={0.42}
             scale={15}
             blur={2.4}
@@ -158,7 +160,7 @@ export function ShowcaseScene() {
         </Suspense>
 
         <OrbitControls
-          target={[0, 0, 0]}
+          target={[0, 0.26, 0]}
           minPolarAngle={0.58}
           maxPolarAngle={Math.PI / 2.45}
           enablePan={false}

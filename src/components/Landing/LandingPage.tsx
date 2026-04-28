@@ -1,16 +1,44 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { ShowcaseScene } from '../Scene/ShowcaseScene'
 import { PieceModelViewer } from '../Scene/PieceModelViewer'
+import VariableProximity from './VariableProximity'
+import { FeaturesFloatingPieces } from './FeaturesFloatingPieces'
 
 const FEATURES = [
-  { name: '3D-доска',       desc: 'Объёмные фигуры, тени и удобная камера.' },
-  { name: 'Игра с другом',  desc: 'Локальная партия на одном устройстве.' },
-  { name: 'Игра против ИИ', desc: 'Локальный ИИ делает легальные ходы.' },
-  { name: 'Режим фокуса',   desc: 'Подсветка допустимых ходов для новичков.' },
-  { name: 'История партий', desc: 'Сохранение ходов и завершённых игр.' },
-  { name: 'AI-разбор',      desc: 'Разбор ошибок и сильных ходов после партии.' },
+  {
+    name: { en: '3D Board', ru: '3D-доска' },
+    desc: {
+      en: 'Volumetric pieces, soft shadows, and a comfortable camera.',
+      ru: 'Объёмные фигуры, тени и удобная камера.',
+    },
+  },
+  {
+    name: { en: 'Play with a Friend', ru: 'Игра с другом' },
+    desc: { en: 'Local match on a single device.', ru: 'Локальная партия на одном устройстве.' },
+  },
+  {
+    name: { en: 'Play vs AI', ru: 'Игра против ИИ' },
+    desc: { en: 'Local AI that always makes legal moves.', ru: 'Локальный ИИ делает легальные ходы.' },
+  },
+  {
+    name: { en: 'Focus Mode', ru: 'Режим фокуса' },
+    desc: { en: 'Highlights legal moves for beginners.', ru: 'Подсветка допустимых ходов для новичков.' },
+  },
 ]
+
+const COPY = {
+  navFeatures: { en: 'Features', ru: 'Возможности' },
+  navLeaderboard: { en: 'Leaderboard', ru: 'Лидерборд' },
+  navOnline: { en: 'Online', ru: 'Онлайн' },
+  navSignIn: { en: 'Sign In', ru: 'Войти' },
+  navPlay: { en: 'Play', ru: 'Играть' },
+  featuresTitle: { en: 'Features', ru: 'Возможности' },
+  featuresSub: {
+    en: 'Everything you need for a modern 3D chess experience',
+    ru: 'Всё, что нужно для современной 3D-игры',
+  },
+} as const
 
 const WHY_ITEMS = [
   {
@@ -76,14 +104,16 @@ const PIECES = [
 ]
 
 export function LandingPage() {
+  const [lang, setLang] = useState<'en' | 'ru'>('en')
   const {
     goToSetup, savedGames, loadGame,
     goToMultiplayerLobby, goToLeaderboard, goToProfile,
-    appTheme, toggleAppTheme, openAuthModal, profile, isPro,
+    openAuthModal, profile, isPro,
   } = useGameStore()
   const lpRef              = useRef<HTMLDivElement>(null)
   const featuresSectionRef = useRef<HTMLElement>(null)
   const piecesRef          = useRef<HTMLElement>(null)
+  const startGameButtonRef = useRef<HTMLButtonElement>(null)
 
   const scrollToFeatures = () =>
     featuresSectionRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -118,13 +148,24 @@ export function LandingPage() {
         </span>
         <div className="lp-nav-right">
           <button className="lp-nav-link" onClick={scrollToFeatures}>
-            Возможности
+            {COPY.navFeatures[lang]}
           </button>
           <button className="lp-nav-link" onClick={goToLeaderboard}>
-            Лидерборд
+            {COPY.navLeaderboard[lang]}
           </button>
           <button className="lp-nav-link" onClick={goToMultiplayerLobby}>
-            Онлайн
+            {COPY.navOnline[lang]}
+          </button>
+          <button
+            className="lp-nav-lang"
+            onClick={() => setLang(prev => (prev === 'en' ? 'ru' : 'en'))}
+            aria-label="Switch language"
+            title={lang === 'en' ? 'Switch to Russian' : 'Switch to English'}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2a10 10 0 1 0 10 10A10.01 10.01 0 0 0 12 2Zm7.93 9h-3.06a15.9 15.9 0 0 0-1.13-5.06A8.03 8.03 0 0 1 19.93 11ZM12 4.03c.83 1.08 2.16 3.34 2.8 6.97H9.2C9.84 7.37 11.17 5.11 12 4.03ZM4.07 13h3.06a15.9 15.9 0 0 0 1.13 5.06A8.03 8.03 0 0 1 4.07 13ZM7.13 11H4.07a8.03 8.03 0 0 1 4.19-5.06A15.9 15.9 0 0 0 7.13 11Zm1.07 2h5.6c-.64 3.63-1.97 5.89-2.8 6.97-.83-1.08-2.16-3.34-2.8-6.97Zm7.54 5.06A15.9 15.9 0 0 0 16.87 13h3.06a8.03 8.03 0 0 1-4.19 5.06Z" />
+            </svg>
+            <span>{lang.toUpperCase()}</span>
           </button>
           {profile ? (
             <button className="lp-btn-sm" onClick={goToProfile}>
@@ -132,14 +173,11 @@ export function LandingPage() {
             </button>
           ) : (
             <button className="lp-btn-sm" onClick={openAuthModal}>
-              Войти
+              {COPY.navSignIn[lang]}
             </button>
           )}
-          <button className="lp-nav-theme" onClick={toggleAppTheme} title="Переключить тему">
-            {appTheme === 'dark' ? '🌙' : '☀️'}
-          </button>
           <button className="lp-btn-sm" onClick={goToSetup}>
-            Играть
+            {COPY.navPlay[lang]}
           </button>
         </div>
       </nav>
@@ -152,8 +190,16 @@ export function LandingPage() {
           </h1>
           <p className="lp-hero-sub">3D Chess Platform</p>
           <div className="lp-hero-cta">
-            <button className="lp-btn-hero-primary" onClick={goToSetup}>
-              Start Game
+            <button ref={startGameButtonRef} className="lp-btn-hero-primary" onClick={goToSetup}>
+              <VariableProximity
+                label="Start Game"
+                className="lp-start-game-proximity"
+                fromFontVariationSettings="'wght' 520, 'opsz' 14"
+                toFontVariationSettings="'wght' 1000, 'opsz' 38"
+                containerRef={startGameButtonRef}
+                radius={110}
+                falloff="linear"
+              />
             </button>
           </div>
         </div>
@@ -178,19 +224,36 @@ export function LandingPage() {
       )}
 
       {/* ── FEATURES ── compact 2×3 grid, single screen ── */}
-      <section className="lp-feats" ref={featuresSectionRef}>
+      <section
+        id="features"
+        className="lp-feats"
+        ref={featuresSectionRef}
+        aria-labelledby="features-heading"
+      >
+        <FeaturesFloatingPieces />
         <div className="lp-container">
-          <div className="lp-section-header">
-            <h2 className="lp-section-title">Возможности</h2>
-            <p className="lp-section-sub">Всё, что нужно для современной 3D-игры</p>
+          <div className="lp-feats-heading-wrap">
+            <div className="lp-section-header lp-feats-header">
+              <div className="lp-feats-heading-row">
+                <h2 id="features-heading" className="lp-section-title lp-feats-title">
+                  {COPY.featuresTitle[lang]}
+                </h2>
+                <div className="lp-feats-heading-rule-wrap" aria-hidden="true">
+                  <span className="lp-feats-heading-rule" />
+                </div>
+              </div>
+              <p id="features-sub" className="lp-section-sub lp-feats-sub">
+                {COPY.featuresSub[lang]}
+              </p>
+            </div>
           </div>
 
           <div className="lp-feats-grid">
-            {FEATURES.map((f, i) => (
-              <div key={f.name} className="lp-feat-card">
+            {FEATURES.slice(0, 4).map((f, i) => (
+              <div key={`feat-${i}-${f.name.en}`} className="lp-feat-card">
                 <div className="lp-feat-card-kicker">0{i + 1}</div>
-                <h3 className="lp-feat-card-name">{f.name}</h3>
-                <p className="lp-feat-card-desc">{f.desc}</p>
+                <h3 className="lp-feat-card-name">{f.name[lang]}</h3>
+                <p className="lp-feat-card-desc">{f.desc[lang]}</p>
               </div>
             ))}
           </div>
