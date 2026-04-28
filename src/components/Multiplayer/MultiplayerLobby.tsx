@@ -2,24 +2,91 @@ import { useState, useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { getRoomFromUrl } from '../../utils/multiplayer'
 
+// ── Language ─────────────────────────────────────────────────────────
+type Lang = 'en' | 'ru'
+function getLang(): Lang {
+  if (typeof window === 'undefined') return 'en'
+  const s = window.localStorage.getItem('cv_lang')
+  if (s === 'ru' || s === 'en') return s
+  const a = document.documentElement.getAttribute('data-ui-lang')
+  return a === 'ru' ? 'ru' : 'en'
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────
+const ArrowLeftIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="19" y1="12" x2="5" y2="12"/>
+    <polyline points="12 19 5 12 12 5"/>
+  </svg>
+)
+const LinkIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  </svg>
+)
+const CheckIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+)
+const GlobeIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="2" y1="12" x2="22" y2="12"/>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+  </svg>
+)
+
+// ── Copy ──────────────────────────────────────────────────────────────
+type T = Record<Lang, string>
+const COPY: Record<string, T> = {
+  back:          { en: 'Back',                    ru: 'На главную'                    },
+  title:         { en: 'ONLINE MATCH',            ru: 'ОНЛАЙН-МАТЧ'                  },
+  subtitle:      { en: 'Play over a shared link via Supabase Realtime',
+                   ru: 'Игра по ссылке через Supabase Realtime'                       },
+  tabCreate:     { en: 'Create',                  ru: 'Создать'                       },
+  tabJoin:       { en: 'Join',                    ru: 'Войти'                         },
+  createDesc:    { en: 'Create a room and share the link with your opponent. You play as White.',
+                   ru: 'Создайте комнату и отправьте ссылку другу. Вы играете белыми.' },
+  createBtn:     { en: 'Create Room',             ru: 'Создать комнату'               },
+  creating:      { en: 'Creating room…',          ru: 'Создаю комнату…'               },
+  roomCreated:   { en: 'Room created',            ru: 'Комната создана'               },
+  roomId:        { en: 'Room ID',                 ru: 'ID комнаты'                    },
+  copyLink:      { en: 'Copy link',               ru: 'Скопировать'                   },
+  copied:        { en: 'Copied',                  ru: 'Скопировано'                   },
+  waitingDesc:   { en: 'Share the link. Your opponent will join as Black.',
+                   ru: 'Отправьте ссылку другу. Он присоединится чёрными.'            },
+  startBtn:      { en: 'Start as White',          ru: 'Начать белыми'                 },
+  joinDesc:      { en: 'Paste the invite link or room code from your opponent. You play as Black.',
+                   ru: 'Вставьте ссылку-приглашение или код комнаты. Вы играете чёрными.' },
+  inputLabel:    { en: 'Link or room code',       ru: 'Ссылка или код комнаты'        },
+  inputPlaceholder: { en: 'cv-xxxxxxxx or full URL', ru: 'cv-xxxxxxxx или ссылка'    },
+  joinBtn:       { en: 'Join Match',              ru: 'Войти в матч'                  },
+  joining:       { en: 'Connecting…',             ru: 'Подключение…'                  },
+  footer:        { en: 'Moves are synced in real time between devices',
+                   ru: 'Ходы синхронизируются между устройствами в реальном времени'   },
+}
+
+// ── Component ─────────────────────────────────────────────────────────
 export function MultiplayerLobby() {
   const {
     goToLanding, startHostedMultiplayer,
     hostMultiplayer, joinMultiplayer, leaveMultiplayer,
-    mpStatus, mpRoomId, mpRoomLink, mpRole, mpAwaitingHostStart, mpError, profile, openAuthModal,
+    mpStatus, mpRoomId, mpRoomLink, mpRole, mpAwaitingHostStart, mpError,
+    profile, openAuthModal,
   } = useGameStore()
 
-  const [tab, setTab] = useState<'host' | 'join'>('host')
+  const [tab, setTab]           = useState<'host' | 'join'>('host')
   const [roomInput, setRoomInput] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied]     = useState(false)
+  const [lang]                  = useState<Lang>(getLang)
 
-  // Auto-fill room from URL
+  const t = (key: string) => COPY[key]?.[lang] ?? key
+
   useEffect(() => {
     const room = getRoomFromUrl()
-    if (room) {
-      setTab('join')
-      setRoomInput(room)
-    }
+    if (room) { setTab('join'); setRoomInput(room) }
   }, [])
 
   const handleCopy = () => {
@@ -29,110 +96,134 @@ export function MultiplayerLobby() {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  const handleHost = () => {
+    if (!profile?.username?.trim()) { openAuthModal(); return }
+    hostMultiplayer()
+  }
+
   const handleJoin = () => {
-    if (!profile?.username?.trim()) {
-      openAuthModal()
-      return
-    }
+    if (!profile?.username?.trim()) { openAuthModal(); return }
     const cleaned = roomInput.trim()
     if (!cleaned) return
-    // Accept both bare room id and full URL
     let room = cleaned
     try {
       const url = new URL(cleaned)
       const fromPath = url.pathname.match(/\/room\/([^/]+)/)?.[1]
       room = fromPath ?? url.searchParams.get('room') ?? cleaned
-    } catch { /* not a URL, use as-is */ }
+    } catch { /* not a URL */ }
     joinMultiplayer(room)
   }
+
+  const isHosting    = mpStatus === 'hosting' && !mpRoomLink
+  const roomReady    = !!mpRoomLink && mpAwaitingHostStart && mpRole === 'white'
 
   return (
     <div className="mp-lobby">
       <div className="mp-lobby-card">
-        <button className="setup-back" onClick={() => { leaveMultiplayer(); goToLanding() }}>← На главную</button>
 
-        <div className="setup-header">
-          <h2 className="setup-title">Онлайн-матч</h2>
-          <p className="setup-subtitle">Игра по ссылке через Supabase Realtime</p>
+        {/* Top bar */}
+        <div className="mp-topbar">
+          <button className="mp-back-btn" onClick={() => { leaveMultiplayer(); goToLanding() }}>
+            <ArrowLeftIcon />
+            {t('back')}
+          </button>
         </div>
 
+        {/* Header */}
+        <div className="mp-header">
+          <div className="mp-header-icon"><GlobeIcon /></div>
+          <h2 className="mp-title">{t('title')}</h2>
+          <p className="mp-subtitle">{t('subtitle')}</p>
+        </div>
+
+        {/* Segmented tabs */}
         <div className="mp-tabs">
-          <button className={`mp-tab ${tab === 'host' ? 'active' : ''}`} onClick={() => setTab('host')}>Создать</button>
-          <button className={`mp-tab ${tab === 'join' ? 'active' : ''}`} onClick={() => setTab('join')}>Войти</button>
+          <button
+            className={`mp-tab ${tab === 'host' ? 'active' : ''}`}
+            onClick={() => setTab('host')}
+          >
+            {t('tabCreate')}
+          </button>
+          <button
+            className={`mp-tab ${tab === 'join' ? 'active' : ''}`}
+            onClick={() => setTab('join')}
+          >
+            {t('tabJoin')}
+          </button>
         </div>
 
+        {/* ── Create tab ── */}
         {tab === 'host' && (
-          <div>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18, lineHeight: 1.6 }}>
-              Создайте комнату и отправьте ссылку другу.
-              Комната синхронизирует ходы между устройствами. Вы играете <strong>белыми</strong>.
-            </p>
+          <div className="mp-tab-body">
+            <p className="mp-desc">{t('createDesc')}</p>
+
             <button
-              className="mp-host-action"
-              onClick={() => {
-                if (!profile?.username?.trim()) {
-                  openAuthModal()
-                  return
-                }
-                hostMultiplayer()
-              }}
-              disabled={mpStatus === 'hosting' || (mpAwaitingHostStart && mpRole === 'white')}
+              className="mp-action-btn"
+              onClick={handleHost}
+              disabled={isHosting || roomReady}
             >
-              {mpStatus === 'hosting' && !mpRoomLink ? 'Создаю комнату…' : 'Создать комнату'}
+              {isHosting ? t('creating') : t('createBtn')}
             </button>
 
-            {mpRoomLink && mpAwaitingHostStart && mpRole === 'white' && (
-              <div className="mp-room-share">
-                <div className="mp-room-share-label">Комната создана</div>
-                <div className="mp-room-share-label">ID комнаты: {mpRoomId}</div>
-                <div className="mp-room-link">
-                  <input value={mpRoomLink} readOnly onFocus={(e) => e.target.select()} />
-                  <button className="mp-room-copy" onClick={handleCopy}>
-                    {copied ? '✓ Скопировано' : 'Скопировать ссылку'}
+            {roomReady && (
+              <div className="mp-room-panel">
+                <div className="mp-room-panel-row">
+                  <span className="mp-room-panel-label">{t('roomCreated')}</span>
+                  <span className="mp-room-id">{mpRoomId}</span>
+                </div>
+
+                <div className="mp-room-link-row">
+                  <input
+                    className="mp-room-link-input"
+                    value={mpRoomLink}
+                    readOnly
+                    onFocus={e => e.target.select()}
+                  />
+                  <button className="mp-copy-btn" onClick={handleCopy}>
+                    {copied ? <><CheckIcon />{t('copied')}</> : <><LinkIcon />{t('copyLink')}</>}
                   </button>
                 </div>
-                <div className="mp-room-status">
-                  Отправьте ссылку другу. Он присоединится чёрными.
-                </div>
-                <button className="mp-host-action" onClick={startHostedMultiplayer}>
-                  Начать белыми
+
+                <p className="mp-room-waiting">{t('waitingDesc')}</p>
+
+                <button className="mp-action-btn" onClick={startHostedMultiplayer}>
+                  {t('startBtn')}
                 </button>
               </div>
             )}
           </div>
         )}
 
+        {/* ── Join tab ── */}
         {tab === 'join' && (
-          <div>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18, lineHeight: 1.6 }}>
-              Вставьте ссылку-приглашение или код комнаты от друга.
-              Вы играете <strong>чёрными</strong>.
-            </p>
+          <div className="mp-tab-body">
+            <p className="mp-desc">{t('joinDesc')}</p>
+
             <div className="mp-input-group">
-              <div className="mp-input-label">Ссылка или код комнаты</div>
+              <div className="mp-input-label">{t('inputLabel')}</div>
               <input
                 className="mp-input"
                 value={roomInput}
-                onChange={(e) => setRoomInput(e.target.value)}
-                placeholder="cv-xxxxxxxx или полная ссылка"
+                onChange={e => setRoomInput(e.target.value)}
+                placeholder={t('inputPlaceholder')}
                 autoFocus
               />
             </div>
+
             <button
-              className="mp-host-action"
+              className="mp-action-btn"
               onClick={handleJoin}
               disabled={!roomInput.trim() || mpStatus === 'joining'}
             >
-              {mpStatus === 'joining' ? 'Подключение…' : 'Войти в матч'}
+              {mpStatus === 'joining' ? t('joining') : t('joinBtn')}
             </button>
           </div>
         )}
 
         {mpError && <div className="mp-error">{mpError}</div>}
 
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', marginTop: 22, lineHeight: 1.6 }}>
-          Игра по ссылке через Supabase Realtime · Комната синхронизирует ходы между устройствами
-        </div>
+        <p className="mp-footer">{t('footer')}</p>
+
       </div>
     </div>
   )

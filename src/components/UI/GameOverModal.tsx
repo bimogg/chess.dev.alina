@@ -1,13 +1,27 @@
 import { useGameStore } from '../../store/gameStore'
 
-function formatDuration(ms: number): string {
+type Lang = 'en' | 'ru'
+function getLang(): Lang {
+  if (typeof window === 'undefined') return 'en'
+  const s = window.localStorage.getItem('cv_lang')
+  if (s === 'ru' || s === 'en') return s
+  const a = document.documentElement.getAttribute('data-ui-lang')
+  return a === 'ru' ? 'ru' : 'en'
+}
+
+function formatDuration(ms: number, lang: Lang): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000))
   const h = Math.floor(totalSec / 3600)
   const m = Math.floor((totalSec % 3600) / 60)
   const s = totalSec % 60
-  if (h > 0) return `${h} ч ${m} мин ${s} сек`
-  if (m > 0) return `${m} мин ${s} сек`
-  return `${s} сек`
+  if (lang === 'ru') {
+    if (h > 0) return `${h} ч ${m} мин ${s} сек`
+    if (m > 0) return `${m} мин ${s} сек`
+    return `${s} сек`
+  }
+  if (h > 0) return `${h}h ${m}m ${s}s`
+  if (m > 0) return `${m}m ${s}s`
+  return `${s}s`
 }
 
 export function GameOverModal() {
@@ -19,6 +33,7 @@ export function GameOverModal() {
   } = useGameStore()
 
   if (!showGameOver) return null
+  const lang = getLang()
 
   // Determine winner
   // In checkmate, the side WHOSE TURN IT IS lost (because they have no legal moves).
@@ -34,8 +49,12 @@ export function GameOverModal() {
   let resultClass: 'win' | 'loss' | 'draw'
 
   if (gameStatus === 'checkmate') {
-    headline = winnerSide === 'w' ? 'Победили белые' : 'Победили чёрные'
-    reasonRu = 'Мат — у проигравшего нет легальных ходов.'
+    headline = winnerSide === 'w'
+      ? (lang === 'ru' ? 'Победили белые' : 'White wins')
+      : (lang === 'ru' ? 'Победили чёрные' : 'Black wins')
+    reasonRu = lang === 'ru'
+      ? 'Мат — у проигравшего нет легальных ходов.'
+      : 'Checkmate — the losing side has no legal moves.'
     icon = '♔'
     // Determine win/loss relative to player
     if (gameMode === 'vs-ai') {
@@ -47,13 +66,17 @@ export function GameOverModal() {
       resultClass = 'win' // local 2-player — neutral
     }
   } else if (gameStatus === 'stalemate') {
-    headline = 'Пат — ничья'
-    reasonRu = 'У игрока нет легальных ходов, но король не под шахом.'
+    headline = lang === 'ru' ? 'Пат — ничья' : 'Stalemate — draw'
+    reasonRu = lang === 'ru'
+      ? 'У игрока нет легальных ходов, но король не под шахом.'
+      : 'No legal moves for the side to move, but the king is not in check.'
     icon = '⚖️'
     resultClass = 'draw'
   } else {
-    headline = 'Ничья'
-    reasonRu = 'По правилам: троекратное повторение / 50 ходов / недостаточно материала.'
+    headline = lang === 'ru' ? 'Ничья' : 'Draw'
+    reasonRu = lang === 'ru'
+      ? 'По правилам: троекратное повторение / 50 ходов / недостаточно материала.'
+      : 'Draw by rule: repetition / 50-move rule / insufficient material.'
     icon = '🤝'
     resultClass = 'draw'
   }
@@ -61,12 +84,19 @@ export function GameOverModal() {
   // Personal verdict line for vs-AI / multiplayer
   let personalLine: string | null = null
   if (gameMode === 'vs-ai' && winnerSide) {
-    if (resultClass === 'win') personalLine = `Вы обыграли Stockfish (уровень ${difficulty}/5). 🔥`
-    else personalLine = `Stockfish (уровень ${difficulty}/5) победил. Не сдавайтесь — попробуйте ещё.`
+    if (resultClass === 'win') {
+      personalLine = lang === 'ru'
+        ? `Вы обыграли Stockfish (уровень ${difficulty}/5). 🔥`
+        : `You beat Stockfish (level ${difficulty}/5). 🔥`
+    } else {
+      personalLine = lang === 'ru'
+        ? `Stockfish (уровень ${difficulty}/5) победил. Не сдавайтесь — попробуйте ещё.`
+        : `Stockfish (level ${difficulty}/5) won. Keep going and try again.`
+    }
   } else if (gameMode === 'multiplayer' && winnerSide) {
     const myColor: 'w' | 'b' | null = mpRole === 'white' ? 'w' : mpRole === 'black' ? 'b' : null
-    if (myColor && winnerSide === myColor) personalLine = 'Вы победили в онлайн-партии. 👑'
-    else if (myColor) personalLine = 'Соперник победил. Реванш?'
+    if (myColor && winnerSide === myColor) personalLine = lang === 'ru' ? 'Вы победили в онлайн-партии. 👑' : 'You won the online game. 👑'
+    else if (myColor) personalLine = lang === 'ru' ? 'Соперник победил. Реванш?' : 'Opponent won. Rematch?'
   }
 
   // Stats
@@ -75,7 +105,7 @@ export function GameOverModal() {
   const durationMs = gameStartedAt && gameEndedAt
     ? gameEndedAt - gameStartedAt
     : 0
-  const durationStr = durationMs > 0 ? formatDuration(durationMs) : '—'
+  const durationStr = durationMs > 0 ? formatDuration(durationMs, lang) : '—'
 
   return (
     <div className="modal-overlay" onClick={closeGameOver}>
@@ -91,15 +121,15 @@ export function GameOverModal() {
         <div className="game-over-stats">
           <div className="game-over-stat">
             <div className="game-over-stat-val">{fullMoves}</div>
-            <div className="game-over-stat-label">ходов</div>
+            <div className="game-over-stat-label">{lang === 'ru' ? 'ходов' : 'moves'}</div>
           </div>
           <div className="game-over-stat">
             <div className="game-over-stat-val">{movesPlayed}</div>
-            <div className="game-over-stat-label">полуходов</div>
+            <div className="game-over-stat-label">{lang === 'ru' ? 'полуходов' : 'ply'}</div>
           </div>
           <div className="game-over-stat">
             <div className="game-over-stat-val">{durationStr}</div>
-            <div className="game-over-stat-label">длительность</div>
+            <div className="game-over-stat-label">{lang === 'ru' ? 'длительность' : 'duration'}</div>
           </div>
         </div>
 
@@ -116,13 +146,17 @@ export function GameOverModal() {
             }}
             disabled={coachAnalyzing}
             style={{ marginBottom: 10, opacity: movesPlayed === 0 ? 0.55 : 1 }}
-            title={movesPlayed === 0 ? 'В этой партии нет ходов для разбора' : 'Запустить анализ Stockfish'}
+            title={
+              movesPlayed === 0
+                ? (lang === 'ru' ? 'В этой партии нет ходов для разбора' : 'No moves to analyze in this game')
+                : (lang === 'ru' ? 'Запустить анализ Stockfish' : 'Run Stockfish analysis')
+            }
           >
             {coachAnalyzing
-              ? '🧠 Анализирую…'
+              ? (lang === 'ru' ? '🧠 Анализирую…' : '🧠 Analyzing…')
               : movesPlayed === 0
-                ? '🧠 Нет ходов для разбора'
-                : '🧠 Разобрать партию (AI-разбор)'}
+                ? (lang === 'ru' ? '🧠 Нет ходов для разбора' : '🧠 No moves to analyze')
+                : (lang === 'ru' ? '🧠 Разобрать партию (AI-разбор)' : '🧠 Analyze game (AI report)')}
           </button>
           <div style={{ display: 'flex', gap: 10 }}>
             <button
@@ -130,14 +164,14 @@ export function GameOverModal() {
               style={{ flex: 1, padding: '12px 16px', fontSize: 13 }}
               onClick={() => { closeGameOver(); resetGame() }}
             >
-              ↺ Реванш
+              {lang === 'ru' ? '↺ Реванш' : '↺ Rematch'}
             </button>
             <button
               className="btn btn-secondary"
               style={{ flex: 1, padding: '12px 16px', fontSize: 13 }}
               onClick={() => { closeGameOver(); goToSetup() }}
             >
-              + Новая игра
+              {lang === 'ru' ? '+ Новая игра' : '+ New game'}
             </button>
           </div>
           <button
@@ -145,7 +179,7 @@ export function GameOverModal() {
             onClick={closeGameOver}
             style={{ alignSelf: 'center', marginTop: 12 }}
           >
-            Закрыть
+            {lang === 'ru' ? 'Закрыть' : 'Close'}
           </button>
         </div>
       </div>
