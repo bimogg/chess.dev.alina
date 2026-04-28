@@ -122,11 +122,17 @@ export function LeaderboardScreen() {
 
   const allCities = Array.from(
     new Map(
-      [...cities, ...(profile?.city ? [profile.city] : [])]
+      cities
         .filter(Boolean)
         .map(c => [c.trim().toLowerCase(), c.trim()] as const)
     ).values()
   )
+
+  useEffect(() => {
+    if (filter !== 'global' && !allCities.includes(filter)) {
+      setFilter('global')
+    }
+  }, [filter, allCities])
 
   return (
     <div className="lb-page">

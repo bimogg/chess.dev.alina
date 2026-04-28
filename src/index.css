@@ -1702,14 +1702,33 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   box-shadow: 0 0 0 1px rgba(122, 31, 31, 0.3);
 }
 .auth-quickstart-card .mp-host-action {
+  width: 100%;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
   background: #7a1f1f;
   border: 1px solid #7a1f1f;
   color: #f5f5f5;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
 }
 .auth-quickstart-card .mp-host-action:hover {
   background: #922727;
   border-color: #922727;
   color: #ffffff;
+  transform: translateY(-1px);
+}
+.auth-quickstart-card .mp-host-action:disabled {
+  opacity: 0.72;
+  cursor: default;
+  transform: none;
 }
 .auth-quickstart-card .modal-close-btn {
   background: transparent;
