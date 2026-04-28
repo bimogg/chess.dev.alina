@@ -75,7 +75,6 @@ const PRO_FEATURES: Record<Lang, string[]> = {
 // ── Component ─────────────────────────────────────────────────────────
 export function ProUpgradeModal() {
   const { showProUpgrade, closeProUpgrade, isPro } = useGameStore()
-  if (!showProUpgrade) return null
 
   const [lang, setLang] = useState<Lang>(() => getLang())
   useEffect(() => {
@@ -89,6 +88,8 @@ export function ProUpgradeModal() {
   }, [])
 
   const t = (key: string) => COPY[key]?.[lang] ?? key
+
+  if (!showProUpgrade) return null
 
   return (
     <div className="modal-overlay" onClick={closeProUpgrade}>

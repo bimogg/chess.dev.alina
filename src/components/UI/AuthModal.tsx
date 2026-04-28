@@ -17,8 +17,6 @@ export function AuthModal() {
     return a === 'ru' ? 'ru' : 'en'
   })
 
-  if (!showAuthModal) return null
-
   const supabaseAvailable = isSupabaseEnabled()
   const isRu = uiLang === 'ru'
   const T = {
@@ -57,6 +55,8 @@ export function AuthModal() {
       window.removeEventListener('storage', syncLang)
     }
   }, [])
+
+  if (!showAuthModal) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
