@@ -1,9 +1,69 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import { BoardTheme, GameMode, SetupConfig, Difficulty, PieceSkin } from '../../types'
 import { POLAR_CHECKOUT_URL } from '../../constants/polar'
 
-// ── Inline SVG icons (Lucide-style, 20×20 stroke) ──────────────────
+// ── Translations ────────────────────────────────────────────────────
+type Lang = 'en' | 'ru'
+type T = Record<Lang, string>
+
+const COPY: Record<string, T> = {
+  back:          { en: 'Back',             ru: 'На главную'         },
+  title:         { en: 'GAME SETUP',       ru: 'НАСТРОЙКА ПАРТИИ'   },
+  modeLabel:     { en: 'Game Mode',        ru: 'Режим игры'         },
+  modeLocal:     { en: 'Local',            ru: 'Локально'           },
+  modeLocalSub:  { en: 'Same device',      ru: 'На одном устройстве'},
+  modeAI:        { en: 'vs AI',            ru: 'Против ИИ'          },
+  modeAISub:     { en: 'Stockfish',        ru: 'Stockfish'          },
+  modeOnline:    { en: 'Online',           ru: 'Онлайн'             },
+  modeOnlineSub: { en: 'Share a link',     ru: 'По ссылке'          },
+  colorLabel:    { en: 'Your Color',       ru: 'Ваш цвет'           },
+  colorWhite:    { en: 'White',            ru: 'Белые'              },
+  colorWhiteSub: { en: 'You go first',     ru: 'Вы ходите первым'   },
+  colorBlack:    { en: 'Black',            ru: 'Чёрные'             },
+  colorBlackSub: { en: 'AI goes first',    ru: 'ИИ ходит первым'    },
+  diffLabel:     { en: 'Difficulty',       ru: 'Сложность'          },
+  boardLabel:    { en: 'Board Theme',      ru: 'Тема доски'         },
+  skinLabel:     { en: 'Piece Skin',       ru: 'Скин фигур'         },
+  skinUnlock:    { en: 'UNLOCK ALL',       ru: 'ОТКРЫТЬ ВСЁ'        },
+  focusLabel:    { en: 'Focus Mode',       ru: 'Режим фокуса'       },
+  focusDesc:     { en: 'Highlights legal moves only',
+                   ru: 'Подсвечивает только легальные ходы'          },
+  startGame:     { en: 'Start Game',       ru: 'Начать партию'      },
+  goLobby:       { en: 'Go to Lobby',      ru: 'Перейти в лобби'    },
+}
+
+const BOARD_THEMES: { id: BoardTheme; label: T; light: string; dark: string }[] = [
+  { id: 'classic', label: { en: 'Classic', ru: 'Классика' }, light: '#f0d9b5', dark: '#b58863' },
+  { id: 'green',   label: { en: 'Green',   ru: 'Зелёная'  }, light: '#eeeed2', dark: '#769656' },
+  { id: 'walnut',  label: { en: 'Walnut',  ru: 'Орех'     }, light: '#f0c68a', dark: '#8b5633' },
+  { id: 'ice',     label: { en: 'Ice',     ru: 'Лёд'      }, light: '#dbeafe', dark: '#5d8aa8' },
+  { id: 'crimson', label: { en: 'Crimson', ru: 'Бордовая' }, light: '#f5d0d8', dark: '#c2185b' },
+]
+
+const DIFFICULTIES: { id: Difficulty; label: T }[] = [
+  { id: 1, label: { en: 'Beginner', ru: 'Новичок' } },
+  { id: 2, label: { en: 'Easy',     ru: 'Лёгкий'  } },
+  { id: 3, label: { en: 'Medium',   ru: 'Средний' } },
+  { id: 4, label: { en: 'Hard',     ru: 'Сложный' } },
+  { id: 5, label: { en: 'Expert',   ru: 'Эксперт' } },
+]
+
+const SKIN_COLORS: Record<string, string> = {
+  classic: '#d4c5a9',
+  gold:    '#c9a84c',
+  marble:  '#a0a0a0',
+  neon:    '#7b3fe4',
+}
+
+const SKINS: { id: PieceSkin; label: T; pro: boolean }[] = [
+  { id: 'classic', label: { en: 'Classic', ru: 'Классика' }, pro: false },
+  { id: 'gold',    label: { en: 'Gold',    ru: 'Золото'   }, pro: true  },
+  { id: 'marble',  label: { en: 'Marble',  ru: 'Мрамор'   }, pro: true  },
+  { id: 'neon',    label: { en: 'Neon',    ru: 'Неон'     }, pro: true  },
+]
+
+// ── Inline SVG icons ────────────────────────────────────────────────
 const IconUsers = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -69,36 +129,21 @@ const IconTarget = () => (
   </svg>
 )
 
-// ── Data ────────────────────────────────────────────────────────────
-const BOARD_THEMES: { id: BoardTheme; label: string; light: string; dark: string }[] = [
-  { id: 'classic', label: 'Классика', light: '#f0d9b5', dark: '#b58863' },
-  { id: 'green',   label: 'Зелёная',  light: '#eeeed2', dark: '#769656' },
-  { id: 'walnut',  label: 'Орех',     light: '#f0c68a', dark: '#8b5633' },
-  { id: 'ice',     label: 'Лёд',      light: '#dbeafe', dark: '#5d8aa8' },
-  { id: 'crimson', label: 'Бордовая', light: '#f5d0d8', dark: '#c2185b' },
-]
-
-const DIFFICULTIES: { id: Difficulty; label: string }[] = [
-  { id: 1, label: 'Новичок' },
-  { id: 2, label: 'Лёгкий' },
-  { id: 3, label: 'Средний' },
-  { id: 4, label: 'Сложный' },
-  { id: 5, label: 'Эксперт' },
-]
-
-const SKIN_COLORS: Record<string, string> = {
-  classic: '#d4c5a9',
-  gold:    '#c9a84c',
-  marble:  '#a0a0a0',
-  neon:    '#7b3fe4',
+// ── Helpers ─────────────────────────────────────────────────────────
+function getLang(): Lang {
+  if (typeof window === 'undefined') return 'en'
+  const saved = window.localStorage.getItem('cv_lang')
+  if (saved === 'ru' || saved === 'en') return saved
+  const attr = document.documentElement.getAttribute('data-ui-lang')
+  if (attr === 'ru' || attr === 'en') return attr
+  return 'en'
 }
 
-const SKINS: { id: PieceSkin; label: string; pro: boolean }[] = [
-  { id: 'classic', label: 'Классика', pro: false },
-  { id: 'gold',    label: 'Золото',   pro: true  },
-  { id: 'marble',  label: 'Мрамор',   pro: true  },
-  { id: 'neon',    label: 'Неон',     pro: true  },
-]
+function saveLang(l: Lang) {
+  window.localStorage.setItem('cv_lang', l)
+  document.documentElement.setAttribute('data-ui-lang', l)
+  document.documentElement.setAttribute('lang', l)
+}
 
 // ── Component ───────────────────────────────────────────────────────
 export function SetupScreen() {
@@ -108,12 +153,28 @@ export function SetupScreen() {
     profile, openAuthModal,
   } = useGameStore()
 
+  const [lang, setLang]               = useState<Lang>(getLang)
   const [mode, setMode]               = useState<GameMode>('local')
   const [playerColor, setPlayerColor] = useState<'w' | 'b'>('w')
   const [focusMode, setFocusMode]     = useState(false)
   const [boardTheme, setBoardTheme]   = useState<BoardTheme>('classic')
   const [difficulty, setDifficulty]   = useState<Difficulty>(3)
   const [skin, setSkin]               = useState<PieceSkin>(storeSkin)
+
+  const t = (key: string) => COPY[key]?.[lang] ?? key
+
+  const toggleLang = () => {
+    const next: Lang = lang === 'en' ? 'ru' : 'en'
+    setLang(next)
+    saveLang(next)
+  }
+
+  // Sync if landing page changes lang while this screen is mounted
+  useEffect(() => {
+    const handler = () => setLang(getLang())
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }, [])
 
   const handleStart = () => {
     if (!profile?.username?.trim()) { openAuthModal(); return }
@@ -130,35 +191,45 @@ export function SetupScreen() {
     <div className="setup">
       <div className="setup-card">
 
-        {/* Back */}
-        <button className="setup-back" onClick={goToLanding}>
-          <IconArrowLeft />
-          На главную
-        </button>
+        {/* Top bar: back + lang toggle */}
+        <div className="setup-topbar">
+          <button className="setup-back" onClick={goToLanding}>
+            <IconArrowLeft />
+            {t('back')}
+          </button>
+          <button className="setup-lang-toggle" onClick={toggleLang} aria-label="Switch language">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            {lang.toUpperCase()}
+          </button>
+        </div>
 
         {/* Header */}
         <div className="setup-header">
-          <h2 className="setup-title">НАСТРОЙКА ПАРТИИ</h2>
+          <h2 className="setup-title">{t('title')}</h2>
         </div>
 
         {/* ── Game Mode ── */}
         <div className="setup-section">
-          <div className="setup-label">Режим игры</div>
+          <div className="setup-label">{t('modeLabel')}</div>
           <div className="setup-options">
             <button className={`setup-option ${mode === 'local' ? 'selected' : ''}`} onClick={() => setMode('local')}>
               <span className="setup-option-icon"><IconUsers /></span>
-              <span className="setup-option-label">Локально</span>
-              <span className="setup-option-sub">На одном устройстве</span>
+              <span className="setup-option-label">{t('modeLocal')}</span>
+              <span className="setup-option-sub">{t('modeLocalSub')}</span>
             </button>
             <button className={`setup-option ${mode === 'vs-ai' ? 'selected' : ''}`} onClick={() => setMode('vs-ai')}>
               <span className="setup-option-icon"><IconCpu /></span>
-              <span className="setup-option-label">Против ИИ</span>
-              <span className="setup-option-sub">Stockfish</span>
+              <span className="setup-option-label">{t('modeAI')}</span>
+              <span className="setup-option-sub">{t('modeAISub')}</span>
             </button>
             <button className={`setup-option ${mode === 'multiplayer' ? 'selected' : ''}`} onClick={() => setMode('multiplayer')}>
               <span className="setup-option-icon"><IconGlobe /></span>
-              <span className="setup-option-label">Онлайн</span>
-              <span className="setup-option-sub">По ссылке</span>
+              <span className="setup-option-label">{t('modeOnline')}</span>
+              <span className="setup-option-sub">{t('modeOnlineSub')}</span>
             </button>
           </div>
         </div>
@@ -167,23 +238,23 @@ export function SetupScreen() {
         {mode === 'vs-ai' && (
           <>
             <div className="setup-section">
-              <div className="setup-label">Ваш цвет</div>
+              <div className="setup-label">{t('colorLabel')}</div>
               <div className="setup-options">
                 <button className={`setup-option ${playerColor === 'w' ? 'selected' : ''}`} onClick={() => setPlayerColor('w')}>
                   <span className="setup-option-icon"><IconSun /></span>
-                  <span className="setup-option-label">Белые</span>
-                  <span className="setup-option-sub">Вы ходите первым</span>
+                  <span className="setup-option-label">{t('colorWhite')}</span>
+                  <span className="setup-option-sub">{t('colorWhiteSub')}</span>
                 </button>
                 <button className={`setup-option ${playerColor === 'b' ? 'selected' : ''}`} onClick={() => setPlayerColor('b')}>
                   <span className="setup-option-icon"><IconMoon /></span>
-                  <span className="setup-option-label">Чёрные</span>
-                  <span className="setup-option-sub">ИИ ходит первым</span>
+                  <span className="setup-option-label">{t('colorBlack')}</span>
+                  <span className="setup-option-sub">{t('colorBlackSub')}</span>
                 </button>
               </div>
             </div>
 
             <div className="setup-section">
-              <div className="setup-label">Сложность</div>
+              <div className="setup-label">{t('diffLabel')}</div>
               <div className="difficulty-pills">
                 {DIFFICULTIES.map(d => (
                   <button
@@ -191,7 +262,7 @@ export function SetupScreen() {
                     className={`difficulty-pill ${difficulty === d.id ? 'selected' : ''}`}
                     onClick={() => setDifficulty(d.id)}
                   >
-                    {d.label}
+                    {d.label[lang]}
                   </button>
                 ))}
               </div>
@@ -201,20 +272,20 @@ export function SetupScreen() {
 
         {/* ── Board Theme ── */}
         <div className="setup-section">
-          <div className="setup-label">Тема доски</div>
+          <div className="setup-label">{t('boardLabel')}</div>
           <div className="theme-swatches">
-            {BOARD_THEMES.map(t => (
+            {BOARD_THEMES.map(th => (
               <button
-                key={t.id}
-                className={`theme-swatch ${boardTheme === t.id ? 'selected' : ''}`}
-                onClick={() => setBoardTheme(t.id)}
-                title={t.label}
+                key={th.id}
+                className={`theme-swatch ${boardTheme === th.id ? 'selected' : ''}`}
+                onClick={() => setBoardTheme(th.id)}
+                title={th.label[lang]}
               >
                 <span className="theme-swatch-preview">
-                  <span className="theme-swatch-half" style={{ background: t.light }} />
-                  <span className="theme-swatch-half" style={{ background: t.dark }} />
+                  <span className="theme-swatch-half" style={{ background: th.light }} />
+                  <span className="theme-swatch-half" style={{ background: th.dark }} />
                 </span>
-                <span className="theme-swatch-label">{t.label}</span>
+                <span className="theme-swatch-label">{th.label[lang]}</span>
               </button>
             ))}
           </div>
@@ -223,12 +294,12 @@ export function SetupScreen() {
         {/* ── Piece Skin ── */}
         <div className="setup-section">
           <div className="setup-label">
-            Скин фигур
+            {t('skinLabel')}
             <button
               className="setup-label-action"
               onClick={() => window.open(POLAR_CHECKOUT_URL, '_blank', 'noopener,noreferrer')}
             >
-              ОТКРЫТЬ ВСЁ <IconArrowRight />
+              {t('skinUnlock')} <IconArrowRight />
             </button>
           </div>
           <div className="theme-swatches">
@@ -239,7 +310,7 @@ export function SetupScreen() {
                   key={s.id}
                   className={`theme-swatch ${skin === s.id ? 'selected' : ''} ${!owned ? 'locked' : ''}`}
                   onClick={() => handleSkinClick(s.id)}
-                  title={s.label + (s.pro && !owned ? ' (Pro)' : '')}
+                  title={s.label[lang] + (s.pro && !owned ? ' (Pro)' : '')}
                 >
                   <span className="theme-swatch-preview">
                     <span className="theme-swatch-solid" style={{ background: SKIN_COLORS[s.id] }} />
@@ -247,7 +318,7 @@ export function SetupScreen() {
                       <span className="theme-swatch-lock"><IconLock /></span>
                     )}
                   </span>
-                  <span className="theme-swatch-label">{s.label}</span>
+                  <span className="theme-swatch-label">{s.label[lang]}</span>
                 </button>
               )
             })}
@@ -260,9 +331,9 @@ export function SetupScreen() {
             <div className="setup-toggle-info">
               <div className="setup-toggle-title">
                 <IconTarget />
-                Режим фокуса
+                {t('focusLabel')}
               </div>
-              <div className="setup-toggle-desc">Подсвечивает только легальные ходы</div>
+              <div className="setup-toggle-desc">{t('focusDesc')}</div>
             </div>
             <label className="setup-toggle">
               <input type="checkbox" checked={focusMode} onChange={e => setFocusMode(e.target.checked)} />
@@ -275,7 +346,7 @@ export function SetupScreen() {
 
         {/* ── Start ── */}
         <button className="btn-start-match" onClick={handleStart}>
-          {mode === 'multiplayer' ? 'Перейти в лобби' : 'Начать партию'}
+          {mode === 'multiplayer' ? t('goLobby') : t('startGame')}
         </button>
 
       </div>
