@@ -1477,43 +1477,64 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 .lp-hero {
   height: 100vh;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
-  /* Solid base color guarantees no holes anywhere.
-     Two huge overlapping radial glows on top — they both span far past 50%,
-     so the gradient is continuous edge-to-edge with no perceptible seam. */
-  background-color: #0f0c0b;
-  background-image:
-    radial-gradient(ellipse 140% 110% at 72% 50%,
-      rgba(212, 168, 67, 0.14) 0%, transparent 72%),
-    radial-gradient(ellipse 140% 110% at 20% 78%,
-      rgba(193, 57, 43, 0.12) 0%, transparent 68%);
+  background: #0d0f12;
+  perspective: 1400px;
+  isolation: isolate;
+}
+/* Dashed frame inset — Webshocker-style thin border that frames the whole hero */
+.lp-hero::before {
+  content: '';
+  position: absolute;
+  top: 88px;       /* leaves room for the top nav */
+  left: 32px;
+  right: 32px;
+  bottom: 32px;
+  border: 1px dashed rgba(255,255,255,0.10);
+  pointer-events: none;
+  z-index: 5;
+}
+/* Subtle floor slope — gives the board a stage to sit on */
+.lp-hero::after {
+  content: '';
+  position: absolute;
+  left: -12%;
+  width: 128%;
+  bottom: -22%;
+  height: 38%;
+  background: linear-gradient(180deg, #f0f0ec 0%, #f6f6f3 38%, #fcfcfa 100%);
+  transform: rotate(-1.4deg) skewY(-1.8deg);
+  transform-origin: top left;
+  z-index: 1;
+  pointer-events: none;
 }
 :root[data-theme='light'] .lp-hero {
-  background-color: #faf6ee;
-  background-image:
-    radial-gradient(ellipse 140% 110% at 72% 50%,
-      rgba(212, 168, 67, 0.20) 0%, transparent 72%),
-    radial-gradient(ellipse 140% 110% at 20% 78%,
-      rgba(193, 57, 43, 0.08) 0%, transparent 68%);
+  background: #0d0f12;
 }
 
-.lp-hero-left {
+.lp-hero-head {
   position: relative;
-  z-index: 10;
-  flex-shrink: 0;
-  width: 48%;
+  z-index: 30;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 0 56px 0 72px;
-  /* No background — let the hero gradient show through */
-  background: transparent;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  padding: 124px 20px 0;
+  pointer-events: none;
 }
-/* No more harsh fadeout split — the 3D scene now has its own soft halo */
-.lp-hero-left::after { display: none; }
+/* Dashed divider under the title (like the line under WEBSHOCKER) */
+.lp-hero-head::after {
+  content: '';
+  display: block;
+  margin: 18px auto 18px;
+  width: min(420px, 60%);
+  height: 1px;
+  border-top: 1px dashed rgba(255,255,255,0.18);
+}
 
 .lp-hero-label {
   font-size: 10px;
@@ -1521,24 +1542,27 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: #C1392B;
-  margin: 0 0 32px;
+  margin: 0 0 20px;
   font-family: system-ui, -apple-system, sans-serif;
 }
 :root[data-theme='light'] .lp-hero-label { color: #C1392B; }
 
 .lp-hero-title {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
   margin: 0;
-  gap: 0;
-  line-height: 1;
+  flex-wrap: wrap;
+  line-height: 0.95;
 }
 .lp-hero-title-main {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: clamp(42px, 5.2vw, 72px);
-  font-weight: 700;
-  letter-spacing: -2.5px;
+  font-family: inherit;
+  font-size: clamp(56px, 7.5vw, 110px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
   color: #ffffff;
+  text-shadow: 0 4px 36px rgba(0,0,0,0.5);
 }
 .lp-hero-title-3d {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -1549,45 +1573,49 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 }
 
 .lp-hero-sub {
-  font-size: 15px;
-  font-weight: 400;
-  color: rgba(255,255,255,0.78);
-  margin: 22px 0 40px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(236,239,242,0.7);
+  margin: 0 0 22px;
   font-family: system-ui, -apple-system, sans-serif;
-  letter-spacing: 0;
-  line-height: 1.6;
-  max-width: 380px;
-  text-shadow: 0 1px 12px rgba(0,0,0,0.4);
+  letter-spacing: 0.5em;
+  line-height: 1.4;
+  max-width: 620px;
+  text-transform: uppercase;
 }
-:root[data-theme='light'] .lp-hero-sub { color: rgba(31,35,40,0.78); text-shadow: none; }
+:root[data-theme='light'] .lp-hero-sub { color: rgba(236,239,242,0.7); }
 
 .lp-hero-cta {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
+  pointer-events: auto;
+  margin-bottom: 0;
 }
 
 .lp-btn-hero-primary {
-  background: #ffffff;
-  color: #0a0a0a;
-  border: 1px solid #ffffff;
+  background: #c1392b;
+  color: #ffffff;
+  border: 1px solid #c1392b;
   border-radius: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 13px 32px;
+  padding: 12px 28px;
   cursor: pointer;
   font-family: system-ui, -apple-system, sans-serif;
   transition: background 0.18s, color 0.18s;
 }
 .lp-btn-hero-primary:hover {
-  background: transparent;
+  background: #a93125;
+  border-color: #a93125;
   color: #ffffff;
 }
-:root[data-theme='light'] .lp-btn-hero-primary { background: #1f2328; color: #fff; border-color: #1f2328; }
-:root[data-theme='light'] .lp-btn-hero-primary:hover { background: transparent; color: #1f2328; }
+:root[data-theme='light'] .lp-btn-hero-primary { background: #c1392b; color: #fff; border-color: #c1392b; }
+:root[data-theme='light'] .lp-btn-hero-primary:hover { background: #a93125; border-color: #a93125; color: #fff; }
 
 .lp-btn-hero-ghost {
   background: transparent;
@@ -1617,19 +1645,19 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
    left 48% of the hero — its area catches button/link clicks first;
    the rest of the canvas is free for OrbitControls drag interaction. */
 .lp-hero-scene {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+  position: relative;
+  width: min(78vw, 1280px);
+  min-width: 700px;
+  height: min(62vh, 680px);
+  margin: -8px auto 0;     /* slightly overlap with the title block */
+  z-index: 14;
   pointer-events: auto;
   background: transparent;
   border: none;
   box-shadow: none;
   outline: none;
   cursor: grab;
+  flex: 1;                  /* fill the rest of the hero */
 }
 .lp-hero-scene:active { cursor: grabbing; }
 .lp-hero-scene::before,
@@ -2010,23 +2038,25 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
 @media (max-width: 960px) {
   .lp-nav { padding: 18px 24px; }
   .lp-container { padding: 0 24px; }
-  .lp-hero { flex-direction: column; overflow: hidden; }
-  .lp-hero-left {
-    width: 100%;
-    height: auto;
-    padding: 96px 28px 28px;
-    background: transparent;
-    justify-content: flex-end;
+  .lp-hero { overflow: hidden; }
+  .lp-hero-head {
+    padding: 88px 18px 6px;
   }
-  .lp-hero-left::after { display: none; }
   .lp-hero-scene {
-    position: relative;
-    left: auto; right: auto; top: auto;
-    flex: 1;
-    min-height: 46vh;
+    width: min(78vw, 760px);
+    min-width: 0;
+    min-height: 44vh;
+    height: min(50vh, 500px);
+    margin-top: 8px;
   }
-  .lp-hero-scene::before { left: 4%; right: 4%; top: 6%; bottom: 12%; }
-  .lp-hero-scene::after { left: 14%; right: 14%; bottom: 8%; }
+  .lp-hero::before { top: 72%; transform: rotate(-1.4deg); }
+  .lp-hero::after {
+    left: -16%;
+    width: 138%;
+    bottom: -18%;
+    height: 36%;
+    transform: rotate(-1.5deg) skewY(-1.9deg);
+  }
   .lp-why { padding: 72px 0; }
   .lp-pieces { padding: 72px 0; }
   .lp-feats { padding: 64px 0; }
@@ -2085,29 +2115,33 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; tra
     font-size: 12px;
   }
 
-  .lp-hero-left { padding: 72px 20px 24px; }
-  .lp-hero-title-main,
-  .lp-hero-title-3d {
-    font-size: clamp(38px, 13vw, 52px);
-    letter-spacing: -1.6px;
-  }
+  .lp-hero-head { padding: 78px 14px 4px; }
+  .lp-hero-title-main { font-size: clamp(36px, 12.5vw, 56px); letter-spacing: -1px; }
   .lp-hero-sub {
-    font-size: 13px;
+    font-size: 10px;
     max-width: 100%;
-    margin: 16px 0 24px;
+    margin: 10px 0 18px;
+    letter-spacing: 0.16em;
   }
   .lp-hero-cta {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
+    width: auto;
+    flex-direction: row;
+    align-items: center;
   }
-  .lp-btn-hero-primary,
-  .lp-btn-hero-ghost {
-    width: 100%;
-    text-align: center;
-    justify-content: center;
-    padding: 12px 14px;
-    font-size: 11px;
+  .lp-btn-hero-primary { width: auto; padding: 10px 16px; font-size: 11px; }
+  .lp-hero-scene {
+    width: 90vw;
+    min-height: 38vh;
+    height: 42vh;
+    margin-top: 14px;
+  }
+  .lp-hero::before { top: 74%; transform: rotate(-1deg); }
+  .lp-hero::after {
+    left: -22%;
+    width: 156%;
+    bottom: -20%;
+    height: 34%;
+    transform: rotate(-1.1deg) skewY(-1.7deg);
   }
 
   .lp-feats-grid { grid-template-columns: 1fr; gap: 12px; padding: 0 16px; }

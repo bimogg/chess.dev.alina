@@ -79,7 +79,7 @@ export function LandingPage() {
   const {
     goToSetup, savedGames, loadGame,
     goToMultiplayerLobby, goToLeaderboard, goToProfile,
-    appTheme, toggleAppTheme, openProUpgrade, openAuthModal, profile, isPro,
+    appTheme, toggleAppTheme, openAuthModal, profile, isPro,
   } = useGameStore()
   const lpRef              = useRef<HTMLDivElement>(null)
   const featuresSectionRef = useRef<HTMLElement>(null)
@@ -146,31 +146,20 @@ export function LandingPage() {
 
       {/* ── HERO ── */}
       <section className="lp-hero">
-
-        <div className="lp-hero-left">
-          <p className="lp-hero-label">NFACTORIAL &bull; 2 ТУР</p>
+        <div className="lp-hero-head">
           <h1 className="lp-hero-title">
             <span className="lp-hero-title-main">ChessVerse</span>
-            <span className="lp-hero-title-3d">3D</span>
           </h1>
-          <p className="lp-hero-sub">
-            ChessVerse = быстрый старт партии по ссылке + AI-разбор.
-            Иммерсивные 3D-шахматы с настоящим Stockfish прямо в браузере.
-          </p>
+          <p className="lp-hero-sub">3D Chess Platform</p>
           <div className="lp-hero-cta">
             <button className="lp-btn-hero-primary" onClick={goToSetup}>
-              Начать игру
-            </button>
-            <button className="lp-btn-hero-ghost" onClick={openProUpgrade}>
-              ★ Pro
+              Start Game
             </button>
           </div>
         </div>
-
         <div className="lp-hero-scene">
           <ShowcaseScene />
         </div>
-
       </section>
 
       {/* ── SAVED GAMES ── */}

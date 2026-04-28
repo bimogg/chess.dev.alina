@@ -1,14 +1,14 @@
-import { useMemo, useRef, Suspense } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { useMemo, Suspense } from 'react'
+import { Canvas } from '@react-three/fiber'
 import { OrbitControls, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 import { ChessPiece } from './Piece'
 import type { PieceType, PieceColor } from '../../types/index'
 
 // Module-level materials — never shared with Board.tsx (different module scope)
-const BORDER_MAT = new THREE.MeshStandardMaterial({ color: '#1a0e04', roughness: 0.88, metalness: 0 })
-const LIGHT_MAT  = new THREE.MeshStandardMaterial({ color: '#f0d9b5', roughness: 0.50, metalness: 0 })
-const DARK_MAT   = new THREE.MeshStandardMaterial({ color: '#b58863', roughness: 0.62, metalness: 0 })
+const BORDER_MAT = new THREE.MeshStandardMaterial({ color: '#121419', roughness: 0.88, metalness: 0 })
+const LIGHT_MAT  = new THREE.MeshStandardMaterial({ color: '#eff2f5', roughness: 0.50, metalness: 0 })
+const DARK_MAT   = new THREE.MeshStandardMaterial({ color: '#2d3238', roughness: 0.62, metalness: 0 })
 
 const BORDER_Y = -0.065
 const BORDER_H = 0.13
@@ -73,20 +73,10 @@ function ShowcaseBoardMesh() {
   )
 }
 
-/**
- * Slowly rotates the board around the Y axis. Always on — never pauses,
- * the rotation is subtle enough to be calming, not distracting.
- */
-function RotatingBoard() {
-  const groupRef = useRef<THREE.Group>(null)
-  useFrame((_, delta) => {
-    if (!groupRef.current) return
-    // ~9°/sec — premium-feeling slow drift
-    groupRef.current.rotation.y += delta * 0.16
-  })
-
+function ShowcaseBoard() {
+  // Tilted slightly clockwise — Webshocker-style 3D product shot
   return (
-    <group ref={groupRef} position={[0, 0, 0]}>
+    <group position={[0, 0, 0]} rotation={[0, -0.32, 0]} scale={[1.05, 1.05, 1.05]}>
       <ShowcaseBoardMesh />
       {STARTING.map(p => (
         <ChessPiece
@@ -110,11 +100,10 @@ export function ShowcaseScene() {
     <div style={{ width: '100%', height: '100%' }}>
       <Canvas
         shadows
-        // Closer camera + slightly wider FOV → board reads BIG on the right
-        // half of a full-width Canvas. Look-target is offset left so the
-        // board (rotating around its Y axis at world origin) sits on the
-        // right side of the viewport, away from the text column.
-        camera={{ position: [-2, 8.5, 11], fov: 44, near: 0.5, far: 120 }}
+        // Webshocker-style hero camera: high tilt, board centered horizontally,
+        // black pieces in front-left, white in back-right. Lower fov tightens
+        // the framing so the board fills the canvas dramatically.
+        camera={{ position: [0, 7.5, 11], fov: 32, near: 0.3, far: 140 }}
         gl={{
           antialias: true,
           alpha: true,
@@ -133,15 +122,14 @@ export function ShowcaseScene() {
         }}
         style={{ background: 'transparent', backgroundColor: 'transparent' }}
       >
-        {/* Warm ambient base — gives the scene a wood/beige tint and lifts
-            black pieces off the dark page background */}
-        <ambientLight intensity={1.8} color="#fff2dd" />
+        {/* Soft studio light setup */}
+        <ambientLight intensity={1.0} color="#f5f7fa" />
 
         {/* Key warm light + shadows */}
         <directionalLight
-          position={[3, 14, 7]}
-          intensity={2.1}
-          color="#fff0d4"
+          position={[-2, 11, -5]}
+          intensity={1.45}
+          color="#f8f9fb"
           castShadow
           shadow-mapSize={[2048, 2048]}
           shadow-camera-left={-8}
@@ -151,38 +139,34 @@ export function ShowcaseScene() {
           shadow-bias={-0.0003}
         />
         {/* Front fill — explicitly lights the front face of black pieces */}
-        <directionalLight position={[0, 4, 14]} intensity={1.6} color="#ffe4c4" />
-        {/* Cool back-rim — separates pieces from background */}
-        <directionalLight position={[-6, 6, -4]} intensity={0.85} color="#cfd8dc" />
-        {/* Subtle red kicker — ties scene into page palette */}
-        <pointLight position={[-7, 5, 2]} intensity={0.35} color="#c1392b" />
-        <pointLight position={[0, 9, 3]} intensity={0.45} color="#fff6e8" />
+        <directionalLight position={[3, 5, 9]} intensity={0.82} color="#ffffff" />
+        <directionalLight position={[-8, 4, -8]} intensity={0.52} color="#d5dde6" />
+        <pointLight position={[-5, 3, -1]} intensity={0.08} color="#c1392b" />
+        <pointLight position={[0, 8, 3]} intensity={0.38} color="#ffffff" />
 
         <Suspense fallback={null}>
-          <RotatingBoard />
+          <ShowcaseBoard />
           {/* Floor shadow follows the (rotating) board — anchors it visually */}
           <ContactShadows
             position={[0, -0.2, 0]}
-            opacity={0.7}
-            scale={16}
-            blur={2.6}
+            opacity={0.42}
+            scale={15}
+            blur={2.4}
             far={0.18}
-            color="#1a0e04"
+            color="#13161b"
           />
         </Suspense>
 
         <OrbitControls
-          // Look-at point shifted LEFT so the board (at world origin) appears
-          // on the RIGHT half of the canvas, away from the text column.
-          target={[-3.2, 0, 0]}
-          minPolarAngle={0.25}
-          maxPolarAngle={Math.PI / 2.1}
+          target={[0, 0, 0]}
+          minPolarAngle={0.58}
+          maxPolarAngle={Math.PI / 2.45}
           enablePan={false}
           enableZoom={false}
           // User can drag the board with the cursor. Auto-rotation of the
           // board group continues in parallel via useFrame.
           enableRotate
-          rotateSpeed={0.5}
+          rotateSpeed={0.26}
           dampingFactor={0.08}
           enableDamping
         />
