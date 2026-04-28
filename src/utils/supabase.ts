@@ -8,12 +8,15 @@
 import { createClient, RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 import { UserProfile, LeaderboardEntry } from '../types'
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+const DEFAULT_SUPABASE_URL = 'https://lflaoozcbamslouqqrwx.supabase.co'
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_lCt8ZwjIXZ5KlJZJYDB6QQ_chX1R5bY'
+
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || DEFAULT_SUPABASE_URL
+const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() || DEFAULT_SUPABASE_ANON_KEY
 
 console.log("Supabase env:", {
-  url: Boolean(import.meta.env.VITE_SUPABASE_URL),
-  key: Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY)
+  url: Boolean(import.meta.env.VITE_SUPABASE_URL) || Boolean(DEFAULT_SUPABASE_URL),
+  key: Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY) || Boolean(DEFAULT_SUPABASE_ANON_KEY)
 })
 
 let client: SupabaseClient | null = null

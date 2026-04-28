@@ -1053,7 +1053,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     // ─── Multiplayer ──────────────────────────────────
     async hostMultiplayer() {
       if (!isSupabaseEnabled()) {
-        set({ mpStatus: 'error', mpError: 'Supabase not configured' })
+        set({ mpStatus: 'error', mpError: 'Multiplayer is unavailable right now' })
         return
       }
       set({ mpStatus: 'hosting', mpError: null })
@@ -1128,7 +1128,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     async joinMultiplayer(roomId: string) {
       if (!isSupabaseEnabled()) {
-        set({ mpStatus: 'error', mpError: 'Supabase not configured' })
+        set({ mpStatus: 'error', mpError: 'Multiplayer is unavailable right now' })
         return
       }
       set({ mpStatus: 'joining', mpError: null })
